@@ -729,4 +729,22 @@
 
   // 起動
   show('home');
+
+  // Service Worker を登録（ホーム画面アプリでも更新が届くように）
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        // 新しいバージョンを見つけたら取り込む
+        reg.addEventListener('updatefound', () => {
+          const sw = reg.installing;
+          if (!sw) return;
+          sw.addEventListener('statechange', () => {
+            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+              // 既存ページがある状態で更新が入った→次回以降は最新
+            }
+          });
+        });
+      }).catch(() => {});
+    });
+  }
 })();
