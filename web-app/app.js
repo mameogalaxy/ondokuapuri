@@ -777,21 +777,34 @@
   // 起動
   show('home');
 
+  // バージョン表示＆更新のお知らせ
+  const APP_VERSION = '1.0.10';
+  (function showVersionAndNotifyUpdate() {
+    const el = $('app-version');
+    if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
+    const seen = Store.load('seen_version', null);
+    if (seen && seen !== APP_VERSION) {
+      toast(`✨ あたらしく なったよ！(ver.${APP_VERSION})`);
+    }
+    Store.save('seen_version', APP_VERSION);
+  })();
+
   // Service Worker を登録（ホーム画面アプリでも更新が届くように）
   if ('serviceWorker' in navigator) {
+    let reloaded = false;
+    // 新しいSWが操作権を取得したら一度だけ再読み込みして最新化
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return;
+      reloaded = true;
+      location.reload();
+    });
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').then((reg) => {
-        // 新しいバージョンを見つけたら取り込む
-        reg.addEventListener('updatefound', () => {
-          const sw = reg.installing;
-          if (!sw) return;
-          sw.addEventListener('statechange', () => {
-            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-              // 既存ページがある状態で更新が入った→次回以降は最新
-            }
-          });
-        });
-      }).catch(() => {});
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+        .then((reg) => {
+          reg.update(); // 起動のたびに更新を確認
+          setInterval(() => reg.update(), 60 * 1000); // 念のため定期確認
+        })
+        .catch(() => {});
     });
   }
 })();

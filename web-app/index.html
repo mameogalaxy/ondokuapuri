@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#FF8A3D" />
   <title>よみたま</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=10" />
+  <link rel="stylesheet" href="styles.css?v=11" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
@@ -37,6 +37,7 @@
         <button class="big-btn primary" id="btn-read">📖 きょうの おんどく</button>
         <button class="big-btn secondary" id="btn-read-line">➖ 1ぎょうだけ よむ</button>
         <button class="big-btn accent" id="btn-scan">📷 きょうかしょを とる</button>
+        <p class="app-version" id="app-version"></p>
       </div>
     </section>
 
@@ -190,6 +191,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
