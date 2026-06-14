@@ -476,7 +476,9 @@
   $('line-next').addEventListener('click', () => { lineIndex++; renderReadText(); });
 
   $('btn-rec-start').addEventListener('click', startRecording);
+  // iOSでのタップ取りこぼし対策に click と touchend の両方を購読（多重実行はガード済み）
   $('btn-finish').addEventListener('click', finishReading);
+  $('btn-finish').addEventListener('touchend', (e) => { e.preventDefault(); finishReading(); });
 
   let reading = false;
 
@@ -541,6 +543,7 @@
   }
 
   async function startRecording() {
+    finishing = false;
     currentSession = { id: uid(), textId: currentText.id, startedAt: new Date().toISOString() };
     volSamples = [];
     renderReadText();
@@ -580,23 +583,32 @@
     if (mediaStream) { mediaStream.getTracks().forEach((t) => t.stop()); mediaStream = null; }
   }
 
+  let finishing = false;
   function finishReading() {
-    if (!reading) return;
+    // 開始していない／すでに終了処理中なら何もしない（多重実行ガード）
+    if (finishing || !currentSession) return;
+    finishing = true;
     reading = false;
+
     const durationSec = Math.max(0, Math.floor((Date.now() - recStart) / 1000));
-    // 読めた割合（色づいた文字数の割合）。録音はしないので音量の代わりに進捗を記録。
     let matched = 0;
     for (const s of highlightSpans) { if (s.matchable && s.el.classList.contains('read-hl')) matched++; }
     const progress = matchableTarget.length ? matched / matchableTarget.length : 0;
-    stopMedia();
 
-    const session = {
-      ...currentSession, endedAt: new Date().toISOString(), durationSec,
-      averageVolume: progress, maxVolume: progress, hasAudio: false,
-      parentApproved: false, earnedExp: 0,
-    };
-    const result = applySession(session, currentText);
-    showResult(result, durationSec);
+    // マイク・認識を止める（ここで例外が出ても結果表示は必ず行う）
+    try { stopMedia(); } catch (_) {}
+
+    try {
+      const session = {
+        ...currentSession, endedAt: new Date().toISOString(), durationSec,
+        averageVolume: progress, maxVolume: progress, hasAudio: false,
+        parentApproved: false, earnedExp: 0,
+      };
+      const result = applySession(session, currentText);
+      showResult(result, durationSec);
+    } catch (e) {
+      show('home'); // 万一失敗してもホームに戻して操作不能を防ぐ
+    }
   }
 
   // ---------------- 結果 ----------------
