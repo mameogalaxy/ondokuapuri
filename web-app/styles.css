@@ -159,7 +159,8 @@ body{
 .read-controls{padding:8px 18px calc(16px + env(safe-area-inset-bottom));text-align:center;}
 .volbar{display:flex;justify-content:center;align-items:flex-end;gap:3px;height:60px;margin-bottom:6px;}
 .volbar i{width:12px;border-radius:6px;background:rgba(120,70,20,.10);}
-.vol-text{font-weight:800;margin:6px 0;color:var(--secondary-d);font-size:16px;}
+.vol-text{font-weight:800;margin:6px 0;color:var(--secondary-d);font-size:16px;min-height:22px;}
+.vol-text.vol-quiet{color:#E04646;}
 .timer{font-size:24px;font-weight:900;margin:6px 0 12px;font-variant-numeric:tabular-nums;}
 
 /* ===== 結果 ===== */

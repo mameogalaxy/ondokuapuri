@@ -430,27 +430,45 @@
     }
   }
 
-  // 照合対象の文字か（句読点・空白・記号は除く）
+  // 照合対象の文字か（句読点・空白・記号・伸ばし棒・促音は除く＝滑舌差を吸収）
   function isMatchable(ch) {
     if (/\s/.test(ch)) return false;
-    return !/[、。，．・「」『』（）()！？!?…—〜~"'：；:;]/.test(ch);
+    return !/[、。，．・「」『』（）()！？!?…—〜~"'：；:;ー―ｰっッゝゞヽヾ々]/.test(ch);
   }
-  // 正規化：カタカナ→ひらがな、英字は小文字に
+  // 正規化：カタカナ→ひらがな、小さい仮名→大きい仮名、英字は小文字に
+  const SMALL_KANA = { 'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゃ':'や','ゅ':'ゆ','ょ':'よ','ゎ':'わ','ゕ':'か','ゖ':'け' };
   function normCh(ch) {
     const code = ch.charCodeAt(0);
-    if (code >= 0x30a1 && code <= 0x30f6) ch = String.fromCharCode(code - 0x60);
+    if (code >= 0x30a1 && code <= 0x30f6) ch = String.fromCharCode(code - 0x60); // カナ→かな
+    if (SMALL_KANA[ch]) ch = SMALL_KANA[ch];
     return ch.toLowerCase();
   }
-  // 認識した読み上げテキストを文章と前から照合し、読めた文字数を色づけする
+
+  // 認識テキストを文章と前方照合。多少ズレても「次が合えば飛ばして進む」あいまい照合。
   function updateHighlightFromTranscript(transcript) {
     if (!matchableTarget.length) return;
     const t = [];
     for (const ch of transcript) { if (isMatchable(ch)) t.push(normCh(ch)); }
-    let i = 0, j = 0;
-    while (i < matchableTarget.length && j < t.length) {
-      if (matchableTarget[i] === t[j]) { i++; j++; } else { j++; }
+    const N = matchableTarget.length;
+    let i = 0;
+    for (let j = 0; j < t.length && i < N; j++) {
+      const c = t[j];
+      if (c === matchableTarget[i]) i++;                         // 一致
+      else if (i + 1 < N && c === matchableTarget[i + 1]) i += 2; // 1文字つまずいても次が合えば進む
+      else if (i + 2 < N && c === matchableTarget[i + 2]) i += 3; // 2文字ぶん飛ばして文脈で復帰
+      // それ以外（言い直し・雑音・誤認識）は無視して読み進む
     }
     highlightByCount(i);
+    showHeard(transcript);
+  }
+
+  // 認識の状況を画面に見せる（聞こえている言葉をライブ表示）
+  let lastHeardAt = 0;
+  function showHeard(transcript) {
+    lastHeardAt = Date.now();
+    const tail = transcript.replace(/\s+/g, '').slice(-10);
+    $('vol-text').textContent = tail ? `👂「${tail}」` : '👂 きこえてるよ！';
+    $('vol-text').classList.remove('vol-quiet');
   }
 
   // 「読めた文字数」ぶんだけ色をつける（声に合わせて前から進む）
@@ -483,6 +501,7 @@
   let reading = false;
 
   // 音声認識（読んだ言葉を文字化して、文章と照合・色づけ）
+  let heardWatch = null;
   function startRecognition() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return false;
@@ -490,7 +509,8 @@
       recognition = new SR();
       recognition.lang = 'ja-JP';
       recognition.continuous = true;
-      recognition.interimResults = true;
+      recognition.interimResults = true; // 中間結果で即ハイライト（反応を速く）
+      recognition.maxAlternatives = 1;
       finalTranscript = '';
       recognition.onresult = (e) => {
         let interim = '';
@@ -501,16 +521,31 @@
         }
         updateHighlightFromTranscript(finalTranscript + interim);
       };
-      recognition.onerror = () => {};
+      recognition.onerror = (e) => {
+        if (e && (e.error === 'not-allowed' || e.error === 'service-not-allowed')) {
+          toast('マイクを ゆるしてね（せっていで きょかしてね）');
+        }
+        // no-speech / aborted などは onend で自動再開
+      };
       recognition.onend = () => { if (recognizing) { try { recognition.start(); } catch (_) {} } };
       recognition.start();
       recognizing = true;
+      lastHeardAt = Date.now();
+      // 「聞こえているか」を見張る：しばらく認識が無ければ案内を出す
+      heardWatch = setInterval(() => {
+        if (!recognizing) return;
+        if (Date.now() - lastHeardAt > 2600) {
+          $('vol-text').textContent = '👂 きこえないよ？ もっと ちかづいて はっきり いってね';
+          $('vol-text').classList.add('vol-quiet');
+        }
+      }, 700);
       return true;
     } catch (_) { recognition = null; return false; }
   }
   function stopRecognition() {
     recognizing = false;
     if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
+    if (heardWatch) { clearInterval(heardWatch); heardWatch = null; }
   }
 
   // 音声認識が使えない端末向けフォールバック：声の「区切り」でハイライトを進める
