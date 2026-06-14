@@ -8,11 +8,10 @@
   <meta name="theme-color" content="#FF8A3D" />
   <title>よみたま</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=14" />
+  <link rel="stylesheet" href="styles.css?v=15" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <!-- kuromoji：漢字に読み(ふりがな)を付け、読みベースで音読を照合するため -->
-  <script src="https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/build/kuromoji.js"></script>
+  <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
 </head>
 <body>
   <div id="app">
@@ -193,6 +192,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>

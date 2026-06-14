@@ -885,7 +885,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.14';
+  const APP_VERSION = '1.0.15';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
@@ -896,13 +896,25 @@
     Store.save('seen_version', APP_VERSION);
   })();
 
-  // kuromoji（読み付与）を読み込む。失敗しても文字照合にフォールバックするので安全。
-  if (window.kuromoji) {
+  // kuromoji（読み付与）を「起動後に非同期で」読み込む。
+  // ※ headで同期読み込みすると、CDNが遅い時にアプリ全体が固まるため動的ロードにする。
+  // 失敗・未完了でも文字照合にフォールバックするので安全。
+  (function loadKuromojiLazily() {
     try {
-      window.kuromoji.builder({ dicPath: 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/' })
-        .build((err, tk) => { if (!err && tk) tokenizer = tk; });
-    } catch (_) { /* 無ければ文字照合のまま */ }
-  }
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/build/kuromoji.js';
+      s.async = true;
+      s.onload = () => {
+        try {
+          if (!window.kuromoji) return;
+          window.kuromoji.builder({ dicPath: 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/' })
+            .build((err, tk) => { if (!err && tk) tokenizer = tk; });
+        } catch (_) { /* 文字照合のまま */ }
+      };
+      s.onerror = () => { /* 読み込めなくてもOK */ };
+      document.head.appendChild(s);
+    } catch (_) { /* noop */ }
+  })();
 
   // Service Worker を登録（ホーム画面アプリでも更新が届くように）
   if ('serviceWorker' in navigator) {
