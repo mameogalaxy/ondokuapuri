@@ -382,11 +382,9 @@
   let mediaRecorder = null, mediaStream = null, audioCtx = null, analyser = null;
   let chunks = [], recStart = 0, timerInt = null, volRaf = null, currentSession = null;
   let volSamples = [];
-  // 音声認識による読み上げハイライト用
+  // 読み上げハイライト用（声が出ている間、前から色を進める）
   let highlightSpans = [];   // {el, matchable}
-  let matchableTarget = [];  // 照合用：正規化した文字の配列（句読点・空白を除く）
-  let recognition = null, recognizing = false, finalTranscript = '';
-  let lastProgress = 0;
+  let matchableTarget = [];  // 色づけ対象の文字（句読点・空白を除く）
 
   // 音量バーの12本を生成
   const volbar = $('volbar');
@@ -427,82 +425,34 @@
       el.appendChild(span);
       const matchable = isMatchable(ch);
       highlightSpans.push({ el: span, matchable });
-      if (matchable) matchableTarget.push(normCh(ch));
+      if (matchable) matchableTarget.push(ch);
     }
-    lastProgress = 0;
   }
 
   // 照合対象の文字か（句読点・空白・記号は除く）
   function isMatchable(ch) {
     if (/\s/.test(ch)) return false;
-    return !/[、。，．・「」『』（）()！？!?…—ー〜~"'：；:;]/.test(ch);
-  }
-  // 正規化：カタカナ→ひらがな、英字は小文字に
-  function normCh(ch) {
-    let c = ch;
-    const code = c.charCodeAt(0);
-    if (code >= 0x30a1 && code <= 0x30f6) c = String.fromCharCode(code - 0x60); // カタカナ→ひらがな
-    return c.toLowerCase();
+    return !/[、。，．・「」『』（）()！？!?…—〜~"'：；:;]/.test(ch);
   }
 
-  // 認識結果（読み上げたテキスト）に合わせてハイライトを進める
-  function updateHighlight(transcript) {
-    if (!matchableTarget.length) return;
-    const t = [];
-    for (const ch of transcript) { if (isMatchable(ch)) t.push(normCh(ch)); }
-    // 2ポインタの貪欲マッチ（前から順に、読めた文字数を数える）
-    let i = 0, j = 0;
-    while (i < matchableTarget.length && j < t.length) {
-      if (matchableTarget[i] === t[j]) { i++; j++; } else { j++; }
-    }
-    const matched = i;
-    // matched 個ぶんの「照合文字」までを色づけ（間の句読点も含める）
+  // 「読めた文字数」ぶんだけ色をつける（声に合わせて前から進む）
+  function highlightByCount(matched) {
+    if (!highlightSpans.length) return;
+    matched = Math.max(0, Math.min(matched, matchableTarget.length));
     let mcount = 0, until = -1;
     for (let k = 0; k < highlightSpans.length; k++) {
       if (highlightSpans[k].matchable) {
         if (mcount < matched) { until = k; mcount++; } else break;
-      } else if (mcount < matched || mcount === 0) {
-        until = k; // 直前まで読めていれば句読点も含める
+      } else if (mcount > 0 && mcount < matched) {
+        until = k; // 読んだ文字の間にある句読点も色づけ
       }
     }
     for (let k = 0; k < highlightSpans.length; k++) {
       highlightSpans[k].el.classList.toggle('read-hl', k <= until);
     }
-    const progress = matched / matchableTarget.length;
-    lastProgress = progress;
-    if (progress >= 0.9) $('read-cheer').textContent = 'ぜんぶ よめたね！すごい！';
-    else if (progress > 0.1) $('read-cheer').textContent = 'いいちょうし！よめてるよ';
-  }
-
-  // 音声認識（読み上げのハイライト用）。録音は別途 MediaRecorder で保存。
-  function startRecognition() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return false; // 非対応ブラウザではハイライト無し（読むこと自体はOK）
-    try {
-      recognition = new SR();
-      recognition.lang = 'ja-JP';
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      finalTranscript = '';
-      recognition.onresult = (e) => {
-        let interim = '';
-        for (let k = e.resultIndex; k < e.results.length; k++) {
-          const r = e.results[k];
-          if (r.isFinal) finalTranscript += r[0].transcript;
-          else interim += r[0].transcript;
-        }
-        updateHighlight(finalTranscript + interim);
-      };
-      recognition.onerror = () => {}; // エラーでも録音は継続
-      recognition.onend = () => { if (recognizing) { try { recognition.start(); } catch (_) {} } };
-      recognition.start();
-      recognizing = true;
-      return true;
-    } catch (_) { recognition = null; return false; }
-  }
-  function stopRecognition() {
-    recognizing = false;
-    if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
+    const progress = matchableTarget.length ? matched / matchableTarget.length : 0;
+    if (progress >= 0.98) $('read-cheer').textContent = 'ぜんぶ よめたね！すごい！';
+    else if (progress > 0.05) $('read-cheer').textContent = 'いいちょうし！よめてるよ';
   }
   $('line-prev').addEventListener('click', () => { lineIndex--; renderReadText(); });
   $('line-next').addEventListener('click', () => { lineIndex++; renderReadText(); });
@@ -523,20 +473,22 @@
     mediaRecorder.start();
     recStart = Date.now();
 
-    // 録音を確保してから音声認識を開始（読み上げのハイライト用・ベストエフォート）
-    renderReadText(); // span を作り直してハイライトをリセット
-    const recoOk = startRecognition();
-    $('read-cheer').textContent = recoOk
-      ? 'こえに あわせて 文字に いろが つくよ！'
-      : 'ペットが おうえんしてるよ！';
+    // 読み上げハイライトを初期化（声が出ている間、色が進む方式）
+    renderReadText();
+    $('read-cheer').textContent = 'こえを だすと 文字に いろが ついていくよ！';
 
-    // 音量メーター
+    // 音量メーター ＆ 声に合わせたハイライト
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') { try { await audioCtx.resume(); } catch (_) {} }
     const src = audioCtx.createMediaStreamSource(mediaStream);
     analyser = audioCtx.createAnalyser(); analyser.fftSize = 512;
     src.connect(analyser);
     const buf = new Uint8Array(analyser.fftSize);
     const bars = volbar.querySelectorAll('i');
+    let voicedSec = 0;          // 声が出ていた累計秒
+    let lastT = performance.now();
+    const CHARS_PER_SEC = 3.5;  // 声が出ている間に色を進める速さ（おおよその音読ペース）
+    const VOICE_THRESHOLD = 0.12;
     const loop = () => {
       analyser.getByteTimeDomainData(buf);
       let sum = 0; for (let i = 0; i < buf.length; i++) { const x = (buf[i] - 128) / 128; sum += x * x; }
@@ -549,6 +501,13 @@
           : 'rgba(0,0,0,.08)';
       });
       $('vol-text').textContent = level > 0.15 ? 'いい声が きこえてるよ！' : 'こえを きかせてね';
+
+      // 声が出ている間だけハイライトを前に進める
+      const now = performance.now();
+      const dt = (now - lastT) / 1000; lastT = now;
+      if (level > VOICE_THRESHOLD) voicedSec += dt;
+      highlightByCount(Math.floor(voicedSec * CHARS_PER_SEC));
+
       volRaf = requestAnimationFrame(loop);
     };
     loop();
@@ -565,7 +524,6 @@
   }
 
   function stopMedia() {
-    stopRecognition();
     if (timerInt) clearInterval(timerInt);
     if (volRaf) cancelAnimationFrame(volRaf);
     if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
