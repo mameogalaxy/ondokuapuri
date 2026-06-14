@@ -885,7 +885,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.15';
+  const APP_VERSION = '1.0.16';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
@@ -917,20 +917,12 @@
   })();
 
   // Service Worker を登録（ホーム画面アプリでも更新が届くように）
+  // ※ 自動リロードはしない（リロード地獄を防ぐ）。ネットワーク優先なので
+  //   次に開いた時点で自然に最新になる。更新の有無は ver 表示とトーストで分かる。
   if ('serviceWorker' in navigator) {
-    let reloaded = false;
-    // 新しいSWが操作権を取得したら一度だけ再読み込みして最新化
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloaded) return;
-      reloaded = true;
-      location.reload();
-    });
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
-        .then((reg) => {
-          reg.update(); // 起動のたびに更新を確認
-          setInterval(() => reg.update(), 60 * 1000); // 念のため定期確認
-        })
+        .then((reg) => { reg.update(); })
         .catch(() => {});
     });
   }
