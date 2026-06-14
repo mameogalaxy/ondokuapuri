@@ -275,13 +275,34 @@
           ctx.drawImage(img, 0, 0, w, h);
           const imgData = ctx.getImageData(0, 0, w, h);
           const d = imgData.data;
-          for (let i = 0; i < d.length; i += 4) {
-            // グレースケール
-            let g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-            // コントラスト強調
-            g = (g - 128) * 1.4 + 128;
-            g = g < 0 ? 0 : g > 255 ? 255 : g;
-            d[i] = d[i + 1] = d[i + 2] = g;
+          // 1) グレースケール化＋ヒストグラム作成
+          const gray = new Uint8Array(d.length / 4);
+          const hist = new Array(256).fill(0);
+          for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+            const g = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
+            gray[p] = g; hist[g]++;
+          }
+          // 2) Otsu法で最適なしきい値を求める（文字を黒、背景を白にくっきり）
+          const total = gray.length;
+          let sum = 0; for (let k = 0; k < 256; k++) sum += k * hist[k];
+          let sumB = 0, wB = 0, maxVar = -1, thr = 127;
+          for (let k = 0; k < 256; k++) {
+            wB += hist[k]; if (wB === 0) continue;
+            const wF = total - wB; if (wF === 0) break;
+            sumB += k * hist[k];
+            const mB = sumB / wB, mF = (sum - sumB) / wF;
+            const between = wB * wF * (mB - mF) * (mB - mF);
+            if (between > maxVar) { maxVar = between; thr = k; }
+          }
+          // 3) 2値化（背景が暗い場合に備え、黒文字白背景になるよう調整）
+          let blackCount = 0;
+          for (let p = 0; p < total; p++) if (gray[p] < thr) blackCount++;
+          const invert = blackCount > total * 0.5; // 黒が多すぎ＝背景が暗い→反転
+          for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+            let on = gray[p] < thr; // 暗い＝文字
+            if (invert) on = !on;
+            const v = on ? 0 : 255;
+            d[i] = d[i + 1] = d[i + 2] = v;
           }
           ctx.putImageData(imgData, 0, 0);
           resolve(canvas.toDataURL('image/png'));
@@ -444,19 +465,22 @@
     return ch.toLowerCase();
   }
 
-  // 認識テキストを文章と前方照合。多少ズレても「次が合えば飛ばして進む」あいまい照合。
+  // 認識テキストを文章と前方照合。漢字の読み(複数かな)や数文字のズレを窓で飛び越える。
   function updateHighlightFromTranscript(transcript) {
     if (!matchableTarget.length) return;
     const t = [];
     for (const ch of transcript) { if (isMatchable(ch)) t.push(normCh(ch)); }
     const N = matchableTarget.length;
+    const W = 6; // 漢字(例:黒川→くろかわ)や言い直しを乗り越える窓
     let i = 0;
     for (let j = 0; j < t.length && i < N; j++) {
       const c = t[j];
-      if (c === matchableTarget[i]) i++;                         // 一致
-      else if (i + 1 < N && c === matchableTarget[i + 1]) i += 2; // 1文字つまずいても次が合えば進む
-      else if (i + 2 < N && c === matchableTarget[i + 2]) i += 3; // 2文字ぶん飛ばして文脈で復帰
-      // それ以外（言い直し・雑音・誤認識）は無視して読み進む
+      let found = -1;
+      for (let k = 0; k < W && i + k < N; k++) {
+        if (matchableTarget[i + k] === c) { found = k; break; }
+      }
+      if (found >= 0) i += found + 1; // 合った位置まで一気に進む（途中の漢字も読んだ扱い）
+      // 合わなければ無視（言い直し・雑音・誤認識）
     }
     highlightByCount(i);
     showHeard(transcript);
@@ -489,6 +513,12 @@
     const progress = matchableTarget.length ? matched / matchableTarget.length : 0;
     if (progress >= 0.98) $('read-cheer').textContent = 'ぜんぶ よめたね！すごい！';
     else if (progress > 0.05) $('read-cheer').textContent = 'いいちょうし！よめてるよ';
+    // 読むほどペットが大きくなって光る（育ってる感）
+    const rp = $('read-pet');
+    if (rp) {
+      rp.style.setProperty('--grow', (1 + progress * 0.35).toFixed(3));
+      rp.classList.toggle('glow', progress >= 0.6);
+    }
   }
   $('line-prev').addEventListener('click', () => { lineIndex--; renderReadText(); });
   $('line-next').addEventListener('click', () => { lineIndex++; renderReadText(); });
@@ -607,6 +637,8 @@
     $('volbar').hidden = true; // 録音なしのため音量バーは非表示（聞いている表示のみ）
     $('read-cheer').hidden = false;
     $('read-pet').className = 'pet small reading';
+    $('read-pet').style.setProperty('--grow', '1'); // 育ち具合をリセット
+    $('read-pet').classList.remove('glow');
     $('read-timer').textContent = '00:00';
   }
 
@@ -778,7 +810,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.10';
+  const APP_VERSION = '1.0.12';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
