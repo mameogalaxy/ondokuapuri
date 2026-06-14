@@ -379,12 +379,13 @@
 
   // ---------------- 音読 + 録音 ----------------
   let currentText = null, singleLineMode = false, lineIndex = 0;
-  let mediaRecorder = null, mediaStream = null, audioCtx = null, analyser = null;
-  let chunks = [], recStart = 0, timerInt = null, volRaf = null, currentSession = null;
+  let mediaStream = null, audioCtx = null, analyser = null;
+  let recStart = 0, timerInt = null, volRaf = null, currentSession = null;
   let volSamples = [];
-  // 読み上げハイライト用（声が出ている間、前から色を進める）
+  // 読み上げハイライト用
   let highlightSpans = [];   // {el, matchable}
-  let matchableTarget = [];  // 色づけ対象の文字（句読点・空白を除く）
+  let matchableTarget = [];  // 照合用：正規化した文字（句読点・空白を除く）
+  let recognition = null, recognizing = false, finalTranscript = '';
 
   // 音量バーの12本を生成
   const volbar = $('volbar');
@@ -425,7 +426,7 @@
       el.appendChild(span);
       const matchable = isMatchable(ch);
       highlightSpans.push({ el: span, matchable });
-      if (matchable) matchableTarget.push(ch);
+      if (matchable) matchableTarget.push(normCh(ch));
     }
   }
 
@@ -433,6 +434,23 @@
   function isMatchable(ch) {
     if (/\s/.test(ch)) return false;
     return !/[、。，．・「」『』（）()！？!?…—〜~"'：；:;]/.test(ch);
+  }
+  // 正規化：カタカナ→ひらがな、英字は小文字に
+  function normCh(ch) {
+    const code = ch.charCodeAt(0);
+    if (code >= 0x30a1 && code <= 0x30f6) ch = String.fromCharCode(code - 0x60);
+    return ch.toLowerCase();
+  }
+  // 認識した読み上げテキストを文章と前から照合し、読めた文字数を色づけする
+  function updateHighlightFromTranscript(transcript) {
+    if (!matchableTarget.length) return;
+    const t = [];
+    for (const ch of transcript) { if (isMatchable(ch)) t.push(normCh(ch)); }
+    let i = 0, j = 0;
+    while (i < matchableTarget.length && j < t.length) {
+      if (matchableTarget[i] === t[j]) { i++; j++; } else { j++; }
+    }
+    highlightByCount(i);
   }
 
   // 「読めた文字数」ぶんだけ色をつける（声に合わせて前から進む）
@@ -460,97 +478,124 @@
   $('btn-rec-start').addEventListener('click', startRecording);
   $('btn-finish').addEventListener('click', finishReading);
 
-  async function startRecording() {
+  let reading = false;
+
+  // 音声認識（読んだ言葉を文字化して、文章と照合・色づけ）
+  function startRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return false;
+    try {
+      recognition = new SR();
+      recognition.lang = 'ja-JP';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      finalTranscript = '';
+      recognition.onresult = (e) => {
+        let interim = '';
+        for (let k = e.resultIndex; k < e.results.length; k++) {
+          const r = e.results[k];
+          if (r.isFinal) finalTranscript += r[0].transcript;
+          else interim += r[0].transcript;
+        }
+        updateHighlightFromTranscript(finalTranscript + interim);
+      };
+      recognition.onerror = () => {};
+      recognition.onend = () => { if (recognizing) { try { recognition.start(); } catch (_) {} } };
+      recognition.start();
+      recognizing = true;
+      return true;
+    } catch (_) { recognition = null; return false; }
+  }
+  function stopRecognition() {
+    recognizing = false;
+    if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
+  }
+
+  // 音声認識が使えない端末向けフォールバック：声の「区切り」でハイライトを進める
+  async function startVoiceFallback() {
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (e) {
-      toast('マイクを つかえるように してね'); return;
-    }
-    currentSession = { id: uid(), textId: currentText.id, startedAt: new Date().toISOString() };
-    chunks = []; volSamples = [];
-    mediaRecorder = new MediaRecorder(mediaStream);
-    mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-    mediaRecorder.start();
-    recStart = Date.now();
-
-    // 読み上げハイライトを初期化（声が出ている間、色が進む方式）
-    renderReadText();
-    $('read-cheer').textContent = 'こえを だすと 文字に いろが ついていくよ！';
-
-    // 音量メーター ＆ 声に合わせたハイライト
+    } catch (e) { toast('マイクを つかえるように してね'); return false; }
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') { try { await audioCtx.resume(); } catch (_) {} }
     const src = audioCtx.createMediaStreamSource(mediaStream);
     analyser = audioCtx.createAnalyser(); analyser.fftSize = 512;
     src.connect(analyser);
     const buf = new Uint8Array(analyser.fftSize);
-    const bars = volbar.querySelectorAll('i');
-    let voicedSec = 0;          // 声が出ていた累計秒
-    let lastT = performance.now();
-    const CHARS_PER_SEC = 3.5;  // 声が出ている間に色を進める速さ（おおよその音読ペース）
-    const VOICE_THRESHOLD = 0.12;
+    let onsets = 0, wasAbove = false, belowSince = performance.now();
+    const VOICE_THRESHOLD = 0.12, GAP_MS = 80, CHARS_PER_ONSET = 1.6;
     const loop = () => {
       analyser.getByteTimeDomainData(buf);
       let sum = 0; for (let i = 0; i < buf.length; i++) { const x = (buf[i] - 128) / 128; sum += x * x; }
       const level = Math.min(1, Math.sqrt(sum / buf.length) * 3.2);
-      volSamples.push(level);
-      const active = Math.round(level * bars.length);
-      bars.forEach((b, i) => {
-        b.style.background = i < active
-          ? `linear-gradient(${getComputedStyle(document.documentElement).getPropertyValue('--secondary')}, var(--primary))`
-          : 'rgba(0,0,0,.08)';
-      });
-      $('vol-text').textContent = level > 0.15 ? 'いい声が きこえてるよ！' : 'こえを きかせてね';
-
-      // 声が出ている間だけハイライトを前に進める
       const now = performance.now();
-      const dt = (now - lastT) / 1000; lastT = now;
-      if (level > VOICE_THRESHOLD) voicedSec += dt;
-      highlightByCount(Math.floor(voicedSec * CHARS_PER_SEC));
-
+      const above = level > VOICE_THRESHOLD;
+      if (above && !wasAbove && (now - belowSince) > GAP_MS) onsets++;
+      if (!above && wasAbove) belowSince = now;
+      wasAbove = above;
+      highlightByCount(Math.round(onsets * CHARS_PER_ONSET));
       volRaf = requestAnimationFrame(loop);
     };
     loop();
+    return true;
+  }
+
+  async function startRecording() {
+    currentSession = { id: uid(), textId: currentText.id, startedAt: new Date().toISOString() };
+    volSamples = [];
+    renderReadText();
+    recStart = Date.now();
+
+    // まず音声認識を試す。使えない端末は声の区切り方式にフォールバック。
+    let mode = 'speech';
+    if (!startRecognition()) {
+      const ok = await startVoiceFallback();
+      if (!ok) return; // マイク不可
+      mode = 'voice';
+    }
+
+    $('read-cheer').textContent = mode === 'speech'
+      ? 'こえを きかせてね！よんだ ところに いろが つくよ'
+      : 'こえを だすと 文字に いろが ついていくよ！';
+    $('vol-text').textContent = '🎤 きいているよ…';
 
     timerInt = setInterval(() => {
       $('read-timer').textContent = fmtTime(Math.floor((Date.now() - recStart) / 1000));
     }, 500);
 
+    reading = true;
     $('btn-rec-start').hidden = true;
     $('vol-area').hidden = false;
+    $('volbar').hidden = true; // 録音なしのため音量バーは非表示（聞いている表示のみ）
     $('read-cheer').hidden = false;
     $('read-pet').className = 'pet small reading';
     $('read-timer').textContent = '00:00';
   }
 
   function stopMedia() {
+    stopRecognition();
     if (timerInt) clearInterval(timerInt);
     if (volRaf) cancelAnimationFrame(volRaf);
     if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
     if (mediaStream) { mediaStream.getTracks().forEach((t) => t.stop()); mediaStream = null; }
   }
 
-  async function finishReading() {
-    if (!mediaRecorder) return;
+  function finishReading() {
+    if (!reading) return;
+    reading = false;
     const durationSec = Math.max(0, Math.floor((Date.now() - recStart) / 1000));
-    const avg = volSamples.length ? volSamples.reduce((a, b) => a + b, 0) / volSamples.length : 0;
-    const max = volSamples.length ? Math.max(...volSamples) : 0;
-
-    const stopped = new Promise((res) => { mediaRecorder.onstop = res; });
-    mediaRecorder.stop();
-    await stopped;
+    // 読めた割合（色づいた文字数の割合）。録音はしないので音量の代わりに進捗を記録。
+    let matched = 0;
+    for (const s of highlightSpans) { if (s.matchable && s.el.classList.contains('read-hl')) matched++; }
+    const progress = matchableTarget.length ? matched / matchableTarget.length : 0;
     stopMedia();
-
-    const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/mp4' });
-    try { await AudioDB.put(currentSession.id, blob); } catch (e) { /* 保存失敗は無視 */ }
 
     const session = {
       ...currentSession, endedAt: new Date().toISOString(), durationSec,
-      averageVolume: avg, maxVolume: max, hasAudio: blob.size > 0,
+      averageVolume: progress, maxVolume: progress, hasAudio: false,
       parentApproved: false, earnedExp: 0,
     };
     const result = applySession(session, currentText);
-    mediaRecorder = null;
     showResult(result, durationSec);
   }
 
@@ -610,7 +655,7 @@
         <div class="p-top"><span class="p-ttl">${esc(text ? text.title : '（削除された文章）')}</span>
         <span class="p-date">${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</span></div>
         <div class="p-meta"><span>⏱️ ${fmtTime(s.durationSec)}</span><span>⭐ +${s.earnedExp}</span>
-        <span>🔊 ${Math.round((s.averageVolume || 0) * 100)}%</span>${s.parentApproved ? '<span>💖 ほめた</span>' : ''}</div>
+        <span>📖 よめた ${Math.round((s.averageVolume || 0) * 100)}%</span>${s.parentApproved ? '<span>💖 ほめた</span>' : ''}</div>
         ${text ? `<div class="p-body">${esc(text.body)}</div>` : ''}
         <div class="p-actions">
           <button class="mini-btn play" ${s.hasAudio ? '' : 'disabled'} data-play="${s.id}">${s.hasAudio ? '▶ さいせい' : '録音なし'}</button>
