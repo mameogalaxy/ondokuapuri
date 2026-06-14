@@ -195,16 +195,25 @@
 
   // ---------------- スキャン + OCR ----------------
   let capturedDataUrl = null;
+  let ocrVertical = false; // 縦書きモード（教科書は縦書きが多い）
   function resetScan() {
     capturedDataUrl = null;
     $('scan-preview').hidden = true;
     $('scan-placeholder').hidden = false;
     $('scan-after').hidden = true;
+    $('writing-toggle').hidden = true;
     $('scan-progress').hidden = true;
     $('scan-input').value = '';
   }
   $('btn-pick').addEventListener('click', () => $('scan-input').click());
   $('btn-retake').addEventListener('click', resetScan);
+  // 縦書き／横書きの切り替え
+  document.querySelectorAll('#writing-toggle .wt-btn').forEach((b) => {
+    b.addEventListener('click', () => {
+      ocrVertical = b.dataset.dir === 'v';
+      document.querySelectorAll('#writing-toggle .wt-btn').forEach((x) => x.classList.toggle('active', x === b));
+    });
+  });
   $('scan-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -215,6 +224,7 @@
       $('scan-preview').hidden = false;
       $('scan-placeholder').hidden = true;
       $('scan-after').hidden = false;
+      $('writing-toggle').hidden = false;
     };
     reader.readAsDataURL(file);
   });
@@ -223,13 +233,21 @@
     if (!capturedDataUrl) return;
     $('scan-progress').hidden = false;
     const txt = $('scan-progress-text');
+    const lang = ocrVertical ? 'jpn_vert' : 'jpn';
     try {
-      const worker = await Tesseract.createWorker('jpn', 1, {
+      // 画像を前処理（拡大・グレースケール・コントラスト）して精度を上げる
+      const processed = await preprocessImage(capturedDataUrl);
+      const worker = await Tesseract.createWorker(lang, 1, {
         logger: (m) => {
           if (m.status === 'recognizing text') txt.textContent = `もじを よみとっているよ… ${Math.round(m.progress * 100)}%`;
         },
       });
-      const { data } = await worker.recognize(capturedDataUrl);
+      // 縦書きは縦1ブロック(5)、横書きは自動(3)。日本語は単語間スペース不要。
+      await worker.setParameters({
+        tessedit_pageseg_mode: ocrVertical ? '5' : '3',
+        preserve_interword_spaces: '0',
+      });
+      const { data } = await worker.recognize(processed);
       await worker.terminate();
       const cleaned = cleanupOcr(data.text || '');
       openEdit({ body: cleaned });
@@ -240,15 +258,57 @@
       openEdit({ body: '' });
     }
   }
+
+  // 画像前処理：大きすぎる画像を適度に縮小し、グレースケール＋コントラスト強調
+  function preprocessImage(dataUrl) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxW = 1600;
+          const scale = img.width > maxW ? maxW / img.width : 1;
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const imgData = ctx.getImageData(0, 0, w, h);
+          const d = imgData.data;
+          for (let i = 0; i < d.length; i += 4) {
+            // グレースケール
+            let g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+            // コントラスト強調
+            g = (g - 128) * 1.4 + 128;
+            g = g < 0 ? 0 : g > 255 ? 255 : g;
+            d[i] = d[i + 1] = d[i + 2] = g;
+          }
+          ctx.putImageData(imgData, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } catch (e) {
+          resolve(dataUrl); // 失敗時は元画像
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
   function cleanupOcr(text) {
-    const lines = text.split('\n').map((l) => l.replace(/[ \t]+/g, ' ').trim());
+    let lines = text.split('\n').map((l) => l.replace(/[ \t]+/g, ' ').trim());
     const out = []; let prevEmpty = false;
     for (const l of lines) {
       const empty = l === '';
       if (empty && prevEmpty) continue;
       out.push(l); prevEmpty = empty;
     }
-    return out.join('\n').trim();
+    let joined = out.join('\n');
+    // 日本語の文字どうしの間に入った余分なスペースを除去（例:「今 日 は」→「今日は」）
+    // 両隣が非ASCII（＝日本語）のときだけスペースを削る。英単語の間隔は残す。
+    for (let i = 0; i < 3; i++) {
+      joined = joined.replace(/([^\x00-\x7F])[\x20\u3000]+([^\x00-\x7F])/g, '$1$2');
+    }
+    return joined.trim();
   }
 
   // ---------------- OCR編集 ----------------
@@ -296,11 +356,24 @@
       div.innerHTML = `<div style="font-size:30px">📖</div>
         <div style="flex:1;min-width:0"><div class="ttl">${esc(t.title)}</div>
         <div class="prev">${esc(t.body.replace(/\n/g, ' '))}</div></div>
+        <button class="del-btn" title="さくじょ">🗑️</button>
         <div style="font-size:32px">▶️</div>`;
       div.addEventListener('click', () => startReading(t, singleLine));
+      // 削除ボタン（カードのタップとは分離）
+      div.querySelector('.del-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`「${t.title}」を さくじょしますか？`)) {
+          deleteText(t.id);
+          openList(singleLine); // 再描画
+        }
+      });
       wrap.appendChild(div);
     });
     show('list');
+  }
+  function deleteText(id) {
+    texts = texts.filter((t) => t.id !== id);
+    saveTexts();
   }
   const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
