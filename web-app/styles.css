@@ -100,6 +100,9 @@ body{
 .read-pet-wrap{text-align:center;padding-top:8px;}
 .cheer{font-weight:800;margin:4px 0;}
 .read-text-card{flex:1;overflow-y:auto;background:#fff;border-radius:20px;margin:8px 20px;padding:20px;font-size:26px;line-height:1.9;white-space:pre-wrap;}
+/* 読み上げた文字のハイライト */
+.read-text-card span{transition:background-color .15s,color .15s;border-radius:4px;}
+.read-text-card span.read-hl{color:#E8730C;background:#FFE39A;}
 .line-nav{display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:700;}
 .read-controls{padding:8px 20px calc(16px + env(safe-area-inset-bottom));text-align:center;}
 .volbar{display:flex;justify-content:center;align-items:flex-end;gap:3px;height:60px;margin-bottom:6px;}

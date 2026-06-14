@@ -382,6 +382,11 @@
   let mediaRecorder = null, mediaStream = null, audioCtx = null, analyser = null;
   let chunks = [], recStart = 0, timerInt = null, volRaf = null, currentSession = null;
   let volSamples = [];
+  // 音声認識による読み上げハイライト用
+  let highlightSpans = [];   // {el, matchable}
+  let matchableTarget = [];  // 照合用：正規化した文字の配列（句読点・空白を除く）
+  let recognition = null, recognizing = false, finalTranscript = '';
+  let lastProgress = 0;
 
   // 音量バーの12本を生成
   const volbar = $('volbar');
@@ -401,15 +406,103 @@
   function renderReadText() {
     const lines = linesOf(currentText.body);
     const nav = $('line-nav');
+    let displayText;
     if (singleLineMode && lines.length > 1) {
       nav.hidden = false;
       lineIndex = Math.max(0, Math.min(lineIndex, lines.length - 1));
       $('line-indicator').textContent = `${lineIndex + 1} / ${lines.length} 行`;
-      $('read-text').textContent = lines[lineIndex] || '';
+      displayText = lines[lineIndex] || '';
     } else {
       nav.hidden = true;
-      $('read-text').textContent = lines.join('\n');
+      displayText = lines.join('\n');
     }
+    // 1文字ずつ <span> に分割（読み上げに合わせて色をつけるため）
+    const el = $('read-text');
+    el.innerHTML = '';
+    highlightSpans = []; matchableTarget = [];
+    for (const ch of displayText) {
+      if (ch === '\n') { el.appendChild(document.createElement('br')); continue; }
+      const span = document.createElement('span');
+      span.textContent = ch;
+      el.appendChild(span);
+      const matchable = isMatchable(ch);
+      highlightSpans.push({ el: span, matchable });
+      if (matchable) matchableTarget.push(normCh(ch));
+    }
+    lastProgress = 0;
+  }
+
+  // 照合対象の文字か（句読点・空白・記号は除く）
+  function isMatchable(ch) {
+    if (/\s/.test(ch)) return false;
+    return !/[、。，．・「」『』（）()！？!?…—ー〜~"'：；:;]/.test(ch);
+  }
+  // 正規化：カタカナ→ひらがな、英字は小文字に
+  function normCh(ch) {
+    let c = ch;
+    const code = c.charCodeAt(0);
+    if (code >= 0x30a1 && code <= 0x30f6) c = String.fromCharCode(code - 0x60); // カタカナ→ひらがな
+    return c.toLowerCase();
+  }
+
+  // 認識結果（読み上げたテキスト）に合わせてハイライトを進める
+  function updateHighlight(transcript) {
+    if (!matchableTarget.length) return;
+    const t = [];
+    for (const ch of transcript) { if (isMatchable(ch)) t.push(normCh(ch)); }
+    // 2ポインタの貪欲マッチ（前から順に、読めた文字数を数える）
+    let i = 0, j = 0;
+    while (i < matchableTarget.length && j < t.length) {
+      if (matchableTarget[i] === t[j]) { i++; j++; } else { j++; }
+    }
+    const matched = i;
+    // matched 個ぶんの「照合文字」までを色づけ（間の句読点も含める）
+    let mcount = 0, until = -1;
+    for (let k = 0; k < highlightSpans.length; k++) {
+      if (highlightSpans[k].matchable) {
+        if (mcount < matched) { until = k; mcount++; } else break;
+      } else if (mcount < matched || mcount === 0) {
+        until = k; // 直前まで読めていれば句読点も含める
+      }
+    }
+    for (let k = 0; k < highlightSpans.length; k++) {
+      highlightSpans[k].el.classList.toggle('read-hl', k <= until);
+    }
+    const progress = matched / matchableTarget.length;
+    lastProgress = progress;
+    if (progress >= 0.9) $('read-cheer').textContent = 'ぜんぶ よめたね！すごい！';
+    else if (progress > 0.1) $('read-cheer').textContent = 'いいちょうし！よめてるよ';
+  }
+
+  // 音声認識（読み上げのハイライト用）。録音は別途 MediaRecorder で保存。
+  function startRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return false; // 非対応ブラウザではハイライト無し（読むこと自体はOK）
+    try {
+      recognition = new SR();
+      recognition.lang = 'ja-JP';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      finalTranscript = '';
+      recognition.onresult = (e) => {
+        let interim = '';
+        for (let k = e.resultIndex; k < e.results.length; k++) {
+          const r = e.results[k];
+          if (r.isFinal) finalTranscript += r[0].transcript;
+          else interim += r[0].transcript;
+        }
+        updateHighlight(finalTranscript + interim);
+      };
+      recognition.onerror = () => {}; // エラーでも録音は継続
+      recognition.onend = () => { if (recognizing) { try { recognition.start(); } catch (_) {} } };
+      recognition.start();
+      recognizing = true;
+      return true;
+    } catch (_) { recognition = null; return false; }
+  }
+  function stopRecognition() {
+    recognizing = false;
+    if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
   }
   $('line-prev').addEventListener('click', () => { lineIndex--; renderReadText(); });
   $('line-next').addEventListener('click', () => { lineIndex++; renderReadText(); });
@@ -429,6 +522,13 @@
     mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     mediaRecorder.start();
     recStart = Date.now();
+
+    // 録音を確保してから音声認識を開始（読み上げのハイライト用・ベストエフォート）
+    renderReadText(); // span を作り直してハイライトをリセット
+    const recoOk = startRecognition();
+    $('read-cheer').textContent = recoOk
+      ? 'こえに あわせて 文字に いろが つくよ！'
+      : 'ペットが おうえんしてるよ！';
 
     // 音量メーター
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -465,6 +565,7 @@
   }
 
   function stopMedia() {
+    stopRecognition();
     if (timerInt) clearInterval(timerInt);
     if (volRaf) cancelAnimationFrame(volRaf);
     if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
