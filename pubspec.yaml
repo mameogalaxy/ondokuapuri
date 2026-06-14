@@ -1,0 +1,48 @@
+name: yomitama
+description: "よみたま - 音読するとペットが育つ小学生向けアプリ (MVP)"
+publish_to: "none"
+
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.2
+
+  # OCR (Google ML Kit Text Recognition v2 / 日本語対応)
+  google_mlkit_text_recognition: ^0.13.0
+
+  # カメラ撮影
+  camera: ^0.11.0+2
+
+  # 録音（音量レベル取得対応）
+  record: ^5.1.2
+
+  # 録音再生（親画面用）
+  audioplayers: ^6.1.0
+
+  # ローカル保存
+  path_provider: ^2.1.4
+  shared_preferences: ^2.3.2
+
+  # ユーティリティ
+  uuid: ^4.5.1
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  # MVPではペットアニメーションを内製（CustomPainter / AnimatedBuilder）で実装するため
+  # Lottie/Rive のアセットは必須ではありません。導入する場合は assets を追加してください。
+  # assets:
+  #   - assets/lottie/
