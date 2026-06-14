@@ -3,6 +3,8 @@
   --bg-top:#FFF6E5; --bg-bottom:#FFE8CC; --text:#4A3B2A;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+/* hidden属性は常に最優先で非表示にする（.sheet等のdisplay指定に負けないように） */
+[hidden]{display:none !important;}
 html,body{margin:0;padding:0;height:100%;}
 body{
   font-family:-apple-system,"Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif;
