@@ -8,6 +8,26 @@
 
 ---
 
+## 📱 iPhone / スマホですぐ試す（Web版）
+
+App Store も Apple Developer 登録も Mac も不要です。**iPhoneのSafariで下のURLを開くだけ**で動きます（GitHub Pagesで公開）。
+
+```
+https://mameogalaxy.github.io/ondokuapuri/
+```
+
+- 撮影 → 日本語OCR（ブラウザ内 Tesseract.js）→ 編集 → 音読録音（MediaRecorder）→ ペット成長 まで動作
+- 画像・音声・文章は **端末内（localStorage / IndexedDB）にのみ保存**。外部サーバーには送りません（OCRエンジンのファイルのみCDNから読み込み）
+- ホーム画面に「追加」すればアプリのように使えます（PWA）
+
+> 実装は `web-app/`。`.github/workflows/deploy-pages.yml` が push時に自動で Pages へデプロイします。
+> 初回のみ GitHub の **Settings → Pages → Build and deployment → Source = GitHub Actions** を有効にしてください。
+
+> ⚠️ ネイティブ版（`lib/` 配下の Flutter コード）は ML Kit を使うモバイル専用です。
+> 「リンクから試す」目的では上のWeb版を使ってください。両方をこのリポジトリに同梱しています。
+
+---
+
 ## ✨ MVPでできること
 
 1. **教科書スキャン**：カメラで教科書・本を撮影

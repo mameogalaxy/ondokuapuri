@@ -1,0 +1,44 @@
+name: Deploy Web App to GitHub Pages
+
+# よみたまのWeb版(web-app/)をGitHub Pagesへ公開します。
+# 公開後、iPhoneのSafariなどから次のURLで試せます：
+#   https://<ユーザー名>.github.io/<リポジトリ名>/
+
+on:
+  push:
+    branches:
+      - main
+      - claude/yomitama-pet-reading-app-z6f8fm
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時デプロイは1つに制限
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Pages をセットアップ
+        uses: actions/configure-pages@v5
+
+      - name: web-app をアーティファクト化
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web-app
+
+      - name: Pages へデプロイ
+        id: deployment
+        uses: actions/deploy-pages@v4

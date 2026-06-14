@@ -1,0 +1,10 @@
+{
+  "name": "よみたま",
+  "short_name": "よみたま",
+  "description": "音読するとペットが育つ小学生向けアプリ",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FFF6E5",
+  "theme_color": "#FF8A3D",
+  "lang": "ja"
+}

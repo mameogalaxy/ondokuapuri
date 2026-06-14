@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#FF8A3D" />
+  <title>よみたま</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <div id="app">
+
+    <!-- 1. 子どもホーム -->
+    <section class="screen active" id="screen-home">
+      <header class="topbar">
+        <span class="logo">よみたま</span>
+        <button class="icon-btn" id="btn-parent" aria-label="おうちのひと">⚙️</button>
+      </header>
+      <div class="scroll">
+        <h1 class="pet-name" id="home-pet-name">たまちゃん</h1>
+        <p class="pet-sub" id="home-pet-sub">たまご・レベル1</p>
+        <div class="pet-stage-wrap">
+          <div class="pet" id="home-pet">🥚</div>
+        </div>
+        <div class="expbar"><div class="expbar-fill" id="home-exp-fill"></div></div>
+        <p class="exp-label" id="home-exp-label">けいけんち 0</p>
+        <div class="stats">
+          <div class="stat"><div class="stat-emoji">🍚</div><div class="stat-val" id="home-food">0</div><div class="stat-label">ごはん</div></div>
+          <div class="stat"><div class="stat-emoji">🔥</div><div class="stat-val" id="home-streak">0日</div><div class="stat-label">れんぞく</div></div>
+          <div class="stat"><div class="stat-emoji">💖</div><div class="stat-val" id="home-friend">0</div><div class="stat-label">なかよし</div></div>
+        </div>
+        <button class="big-btn primary" id="btn-read">📖 きょうの おんどく</button>
+        <button class="big-btn secondary" id="btn-read-line">➖ 1ぎょうだけ よむ</button>
+        <button class="big-btn accent" id="btn-scan">📷 きょうかしょを とる</button>
+      </div>
+    </section>
+
+    <!-- 2. スキャン -->
+    <section class="screen" id="screen-scan">
+      <header class="topbar dark">
+        <button class="icon-btn" data-back="home">←</button>
+        <span class="logo">きょうかしょを とる</span><span></span>
+      </header>
+      <div class="scan-body">
+        <img id="scan-preview" alt="" hidden />
+        <div id="scan-placeholder" class="scan-placeholder">
+          <div class="scan-frame"></div>
+          <p>わくの中に ぶんしょうを いれて<br>しゃしんを とってね</p>
+        </div>
+        <div id="scan-progress" class="scan-progress" hidden>
+          <div class="spinner"></div>
+          <p id="scan-progress-text">もじを よみとっているよ…</p>
+        </div>
+      </div>
+      <div class="scan-actions">
+        <!-- iPhoneのカメラ/写真を起動 -->
+        <input type="file" accept="image/*" capture="environment" id="scan-input" hidden />
+        <button class="big-btn secondary" id="btn-pick" >📷 しゃしんを とる</button>
+        <div class="row" id="scan-after" hidden>
+          <button class="big-btn secondary half" id="btn-retake">🔄 とりなおす</button>
+          <button class="big-btn primary half" id="btn-ocr">🔤 よみとる</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. OCR編集 -->
+    <section class="screen" id="screen-edit">
+      <header class="topbar">
+        <button class="icon-btn" data-back="home">←</button>
+        <span class="logo">ぶんしょうを かくにん</span><span></span>
+      </header>
+      <div class="scroll form">
+        <label class="field-label">タイトル</label>
+        <input type="text" id="edit-title" class="text-input" placeholder="れい：ちいちゃんのかげおくり" />
+        <div class="field-row">
+          <label class="field-label">ぶんしょう</label>
+          <button class="link-btn" id="btn-split">↵ 1文ずつに わける</button>
+        </div>
+        <textarea id="edit-body" class="text-area" placeholder="ここに よみとった ぶんしょうが でるよ。まちがいは なおせるよ。"></textarea>
+        <div class="row">
+          <button class="big-btn secondary half" id="btn-save">💾 ほぞん</button>
+          <button class="big-btn primary half" id="btn-save-read">▶ よむ！</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 文章えらび -->
+    <section class="screen" id="screen-list">
+      <header class="topbar">
+        <button class="icon-btn" data-back="home">←</button>
+        <span class="logo" id="list-title">よむ おはなしを えらぶ</span><span></span>
+      </header>
+      <div class="scroll" id="list-items"></div>
+    </section>
+
+    <!-- 4. 音読 -->
+    <section class="screen" id="screen-read">
+      <header class="topbar">
+        <button class="icon-btn" data-back="home">←</button>
+        <span class="logo" id="read-title">おんどく</span><span></span>
+      </header>
+      <div class="read-pet-wrap">
+        <div class="pet small" id="read-pet">🥚</div>
+        <p class="cheer" id="read-cheer" hidden>ペットが おうえんしてるよ！</p>
+      </div>
+      <div class="read-text-card" id="read-text"></div>
+      <div class="line-nav" id="line-nav" hidden>
+        <button class="link-btn" id="line-prev">‹ まえ</button>
+        <span id="line-indicator">1 / 1 行</span>
+        <button class="link-btn" id="line-next">つぎ ›</button>
+      </div>
+      <div class="read-controls">
+        <div id="vol-area" hidden>
+          <div class="volbar" id="volbar"></div>
+          <p class="vol-text" id="vol-text">こえを きかせてね</p>
+          <p class="timer" id="read-timer">00:00</p>
+          <button class="big-btn primary" id="btn-finish">✅ よみ おわった！</button>
+        </div>
+        <button class="big-btn secondary" id="btn-rec-start">🎤 ろくおん スタート</button>
+      </div>
+    </section>
+
+    <!-- 5. 結果 -->
+    <section class="screen" id="screen-result">
+      <div class="scroll result">
+        <h1 class="result-title">よく よめたね！🎉</h1>
+        <div class="pet" id="result-pet">🥚</div>
+        <div class="result-msg" id="result-msg"></div>
+        <div class="result-card"><span>⏱️ おんどく じかん</span><b id="result-time">00:00</b></div>
+        <div class="result-card"><span>⭐ けいけんち</span><b id="result-exp">+0</b></div>
+        <div class="result-card"><span>🍚 ごはん</span><b id="result-food">+0</b></div>
+        <div id="result-banners"></div>
+        <p class="streak-line" id="result-streak"></p>
+        <button class="big-btn primary" id="btn-result-home">🏠 おうちに もどる</button>
+        <p class="soft-note">きょうは ここまででも OK。また こえを きかせてね！</p>
+      </div>
+    </section>
+
+    <!-- 親ゲート -->
+    <section class="screen" id="screen-gate">
+      <header class="topbar">
+        <button class="icon-btn" data-back="home">←</button>
+        <span class="logo">おうちのひと かくにん</span><span></span>
+      </header>
+      <div class="scroll gate">
+        <div class="lock">🔒</div>
+        <p>保護者の方へ：下の計算をしてください</p>
+        <p class="gate-q" id="gate-q">3 × 4 = ?</p>
+        <input type="number" id="gate-input" class="text-input center" inputmode="numeric" />
+        <p class="error" id="gate-error" hidden>もういちど ためしてください</p>
+        <button class="big-btn primary" id="btn-gate-go">すすむ</button>
+      </div>
+    </section>
+
+    <!-- 6. 親画面 -->
+    <section class="screen" id="screen-parent">
+      <header class="topbar">
+        <button class="icon-btn" data-back="home">←</button>
+        <span class="logo">おうちのひと がめん</span><span></span>
+      </header>
+      <div class="tabs">
+        <button class="tab active" data-tab="sessions">おんどく きろく</button>
+        <button class="tab" data-tab="stamps">スタンプ りれき</button>
+      </div>
+      <div class="scroll" id="parent-sessions"></div>
+      <div class="scroll" id="parent-stamps" hidden></div>
+    </section>
+
+  </div>
+
+  <!-- スタンプ送信シート -->
+  <div class="sheet-backdrop" id="stamp-sheet" hidden>
+    <div class="sheet">
+      <h2>ほめスタンプを おくろう</h2>
+      <div class="stamp-choices" id="stamp-choices"></div>
+      <input type="text" id="stamp-comment" class="text-input" placeholder="ひとこと（れい：いいこえだったね！）" />
+      <button class="big-btn primary" id="btn-send-stamp">おくる</button>
+      <button class="link-btn" id="btn-cancel-stamp">とじる</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
