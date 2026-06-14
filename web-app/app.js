@@ -490,7 +490,9 @@
   let lastHeardAt = 0;
   function showHeard(transcript) {
     lastHeardAt = Date.now();
-    const tail = transcript.replace(/\s+/g, '').slice(-10);
+    // 記号・「・」・句読点・空白は無視して表示（漢字はそのままでOK）
+    const cleaned = transcript.replace(/[\s、。，．・･「」『』（）()！？!?…—〜~"'’“”：；:;]/g, '');
+    const tail = cleaned.slice(-10);
     $('vol-text').textContent = tail ? `👂「${tail}」` : '👂 きこえてるよ！';
     $('vol-text').classList.remove('vol-quiet');
   }
@@ -810,7 +812,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.12';
+  const APP_VERSION = '1.0.13';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
