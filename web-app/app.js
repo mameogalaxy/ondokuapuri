@@ -404,8 +404,11 @@
   let recStart = 0, timerInt = null, volRaf = null, currentSession = null;
   let volSamples = [];
   // 読み上げハイライト用
-  let highlightSpans = [];   // {el, matchable}
-  let matchableTarget = [];  // 照合用：正規化した文字（句読点・空白を除く）
+  let highlightSpans = [];   // {el, matchable, ch}
+  let matchableTarget = [];  // 照合用：正規化した文字（句読点・空白を除く）＝フォールバック
+  let readKana = [];         // 読み(ひらがな)ベースの照合：{kana, spanEnd}
+  let readingMode = false;   // 読みベースで照合できるか
+  let tokenizer = null;      // kuromoji形態素解析器（読み付与）。読めたら有効。
   let recognition = null, recognizing = false, finalTranscript = '';
 
   // 音量バーの12本を生成
@@ -446,9 +449,52 @@
       span.textContent = ch;
       el.appendChild(span);
       const matchable = isMatchable(ch);
-      highlightSpans.push({ el: span, matchable });
+      highlightSpans.push({ el: span, matchable, ch });
       if (matchable) matchableTarget.push(normCh(ch));
     }
+    // 読み(ひらがな)ベースの照合インデックスを用意（kuromojiが使えるとき）
+    readingMode = buildReadingIndex();
+  }
+
+  // カタカナ→ひらがな
+  function kataToHira(s) {
+    let out = '';
+    for (const ch of s) {
+      const c = ch.charCodeAt(0);
+      out += (c >= 0x30a1 && c <= 0x30f6) ? String.fromCharCode(c - 0x60) : ch;
+    }
+    return out;
+  }
+  // テキスト→読み(ひらがな)。kuromojiが無ければ null。
+  function toReadingHira(text) {
+    if (!tokenizer) return null;
+    let tokens;
+    try { tokens = tokenizer.tokenize(text); } catch (_) { return null; }
+    let out = '';
+    for (const tk of tokens) {
+      const r = (tk.reading && tk.reading !== '*') ? tk.reading : tk.surface_form;
+      out += kataToHira(r);
+    }
+    return out;
+  }
+  // 表示中の文章を「読みのかな配列＋各かなが属するspan終端」に変換
+  function buildReadingIndex() {
+    readKana = [];
+    if (!tokenizer || !highlightSpans.length) return false;
+    const spanText = highlightSpans.map((s) => s.ch).join('');
+    let tokens;
+    try { tokens = tokenizer.tokenize(spanText); } catch (_) { return false; }
+    let pos = 0; // spanText上の位置＝highlightSpansのindex
+    for (const tk of tokens) {
+      const surf = tk.surface_form;
+      const end = Math.min(pos + surf.length - 1, highlightSpans.length - 1);
+      const r = (tk.reading && tk.reading !== '*') ? kataToHira(tk.reading) : surf;
+      for (const ch of r) {
+        if (isMatchable(ch)) readKana.push({ kana: normCh(ch), spanEnd: end });
+      }
+      pos += surf.length;
+    }
+    return readKana.length > 0;
   }
 
   // 照合対象の文字か（句読点・空白・記号・伸ばし棒・促音は除く＝滑舌差を吸収）
@@ -465,39 +511,63 @@
     return ch.toLowerCase();
   }
 
-  // 認識テキストを文章と前方照合。漢字の読み(複数かな)や数文字のズレを窓で飛び越える。
-  function updateHighlightFromTranscript(transcript) {
-    if (!matchableTarget.length) return;
-    const t = [];
-    for (const ch of transcript) { if (isMatchable(ch)) t.push(normCh(ch)); }
-    const N = matchableTarget.length;
-    const W = 6; // 漢字(例:黒川→くろかわ)や言い直しを乗り越える窓
+  // 前方ウィンドウ照合：targetKana(配列) に対して読めた数を返す
+  function forwardMatch(spoken, targetKana) {
+    const N = targetKana.length;
+    const W = 6; // 漢字の読みや言い直し・誤認識を乗り越える窓
     let i = 0;
-    for (let j = 0; j < t.length && i < N; j++) {
-      const c = t[j];
+    for (let j = 0; j < spoken.length && i < N; j++) {
+      const c = spoken[j];
       let found = -1;
       for (let k = 0; k < W && i + k < N; k++) {
-        if (matchableTarget[i + k] === c) { found = k; break; }
+        if (targetKana[i + k] === c) { found = k; break; }
       }
-      if (found >= 0) i += found + 1; // 合った位置まで一気に進む（途中の漢字も読んだ扱い）
-      // 合わなければ無視（言い直し・雑音・誤認識）
+      if (found >= 0) i += found + 1;
     }
-    highlightByCount(i);
+    return i;
+  }
+
+  // 認識テキストを文章と前方照合。読み(ひらがな)どうしで比べるので漢字でもOK。
+  function updateHighlightFromTranscript(transcript) {
+    if (readingMode && readKana.length) {
+      // 読みベース：認識結果を読み(ひらがな)化してから照合
+      const hira = toReadingHira(transcript) || transcript;
+      const spoken = [];
+      for (const ch of hira) { if (isMatchable(ch)) spoken.push(normCh(ch)); }
+      const matched = forwardMatch(spoken, readKana.map((x) => x.kana));
+      highlightByReading(matched);
+    } else if (matchableTarget.length) {
+      // フォールバック：文字どうしで照合
+      const t = [];
+      for (const ch of transcript) { if (isMatchable(ch)) t.push(normCh(ch)); }
+      highlightByCount(forwardMatch(t, matchableTarget));
+    }
     showHeard(transcript);
   }
 
-  // 認識の状況を画面に見せる（聞こえている言葉をライブ表示）
+  // 認識の状況を画面に見せる（聞こえている言葉を“ひらがな”でライブ表示）
   let lastHeardAt = 0;
   function showHeard(transcript) {
     lastHeardAt = Date.now();
-    // 記号・「・」・句読点・空白は無視して表示（漢字はそのままでOK）
-    const cleaned = transcript.replace(/[\s、。，．・･「」『』（）()！？!?…—〜~"'’“”：；:;]/g, '');
-    const tail = cleaned.slice(-10);
+    // 読み(ひらがな)化してから、記号・「・」・句読点・空白を除いて表示
+    const hira = toReadingHira(transcript) || transcript;
+    const cleaned = hira.replace(/[\s、。，．・･「」『』（）()！？!?…—〜~"'’“”：；:;]/g, '');
+    const tail = cleaned.slice(-12);
     $('vol-text').textContent = tail ? `👂「${tail}」` : '👂 きこえてるよ！';
     $('vol-text').classList.remove('vol-quiet');
   }
 
-  // 「読めた文字数」ぶんだけ色をつける（声に合わせて前から進む）
+  // 読みベース：matched 個ぶんの読みかなに対応する span まで色づけ
+  function highlightByReading(matched) {
+    matched = Math.max(0, Math.min(matched, readKana.length));
+    const until = matched > 0 ? readKana[matched - 1].spanEnd : -1;
+    for (let k = 0; k < highlightSpans.length; k++) {
+      highlightSpans[k].el.classList.toggle('read-hl', k <= until);
+    }
+    applyProgress(readKana.length ? matched / readKana.length : 0);
+  }
+
+  // 文字ベース（フォールバック）：matched 文字ぶん色づけ
   function highlightByCount(matched) {
     if (!highlightSpans.length) return;
     matched = Math.max(0, Math.min(matched, matchableTarget.length));
@@ -506,16 +576,19 @@
       if (highlightSpans[k].matchable) {
         if (mcount < matched) { until = k; mcount++; } else break;
       } else if (mcount > 0 && mcount < matched) {
-        until = k; // 読んだ文字の間にある句読点も色づけ
+        until = k;
       }
     }
     for (let k = 0; k < highlightSpans.length; k++) {
       highlightSpans[k].el.classList.toggle('read-hl', k <= until);
     }
-    const progress = matchableTarget.length ? matched / matchableTarget.length : 0;
+    applyProgress(matchableTarget.length ? matched / matchableTarget.length : 0);
+  }
+
+  // 進捗に応じた応援メッセージ＆ペットの成長演出（両方式で共通）
+  function applyProgress(progress) {
     if (progress >= 0.98) $('read-cheer').textContent = 'ぜんぶ よめたね！すごい！';
     else if (progress > 0.05) $('read-cheer').textContent = 'いいちょうし！よめてるよ';
-    // 読むほどペットが大きくなって光る（育ってる感）
     const rp = $('read-pet');
     if (rp) {
       rp.style.setProperty('--grow', (1 + progress * 0.35).toFixed(3));
@@ -812,7 +885,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.13';
+  const APP_VERSION = '1.0.14';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
@@ -822,6 +895,14 @@
     }
     Store.save('seen_version', APP_VERSION);
   })();
+
+  // kuromoji（読み付与）を読み込む。失敗しても文字照合にフォールバックするので安全。
+  if (window.kuromoji) {
+    try {
+      window.kuromoji.builder({ dicPath: 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/' })
+        .build((err, tk) => { if (!err && tk) tokenizer = tk; });
+    } catch (_) { /* 無ければ文字照合のまま */ }
+  }
 
   // Service Worker を登録（ホーム画面アプリでも更新が届くように）
   if ('serviceWorker' in navigator) {
