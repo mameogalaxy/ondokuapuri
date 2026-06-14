@@ -175,6 +175,13 @@
     const t = $('toast'); t.textContent = text; t.hidden = false;
     clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 2200);
   }
+  // 万一の例外を画面に出して原因を分かるようにする（不具合調査用）
+  let _errShown = false;
+  window.addEventListener('error', (e) => {
+    if (_errShown) return; _errShown = true;
+    try { toast('⚠️ ' + (e.message || 'エラー')); } catch (_) {}
+    setTimeout(() => { _errShown = false; }, 3000);
+  });
 
   // ---------------- ホーム ----------------
   function renderHome() {
@@ -885,7 +892,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.16';
+  const APP_VERSION = '1.0.17';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
@@ -896,25 +903,9 @@
     Store.save('seen_version', APP_VERSION);
   })();
 
-  // kuromoji（読み付与）を「起動後に非同期で」読み込む。
-  // ※ headで同期読み込みすると、CDNが遅い時にアプリ全体が固まるため動的ロードにする。
-  // 失敗・未完了でも文字照合にフォールバックするので安全。
-  (function loadKuromojiLazily() {
-    try {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/build/kuromoji.js';
-      s.async = true;
-      s.onload = () => {
-        try {
-          if (!window.kuromoji) return;
-          window.kuromoji.builder({ dicPath: 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/' })
-            .build((err, tk) => { if (!err && tk) tokenizer = tk; });
-        } catch (_) { /* 文字照合のまま */ }
-      };
-      s.onerror = () => { /* 読み込めなくてもOK */ };
-      document.head.appendChild(s);
-    } catch (_) { /* noop */ }
-  })();
+  // ※ kuromoji（読み付与）は、辞書構築の重い処理で端末が固まる問題があったため
+  //   現在は読み込まない。漢字は「窓つき文字照合（飛び越え）」で対応する（固まらない）。
+  //   将来 Web Worker 化して非ブロッキングで再導入する余地あり。
 
   // Service Worker を登録（ホーム画面アプリでも更新が届くように）
   // ※ 自動リロードはしない（リロード地獄を防ぐ）。ネットワーク優先なので
