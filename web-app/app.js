@@ -103,7 +103,7 @@
   let config = Store.load('config', {});
   const saveConfig = () => Store.save('config', config);
   const GEMINI_DEFAULT = {
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
   };
   const geminiCfg = () => ({
@@ -1173,7 +1173,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.26';
+  const APP_VERSION = '1.0.27';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
