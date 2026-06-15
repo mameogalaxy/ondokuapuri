@@ -113,7 +113,12 @@ body{
 #scan-preview{max-width:100%;max-height:100%;object-fit:contain;}
 .scan-placeholder{color:#fff;text-align:center;position:relative;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font-weight:700;}
 .scan-frame{width:80%;height:56%;border:3px dashed var(--accent);border-radius:20px;position:absolute;box-shadow:0 0 0 100vmax rgba(0,0,0,.35);}
-.scan-progress{position:absolute;inset:0;background:rgba(20,15,10,.72);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-weight:700;}
+/* トリミング枠 */
+#crop-overlay{position:absolute;inset:0;z-index:3;}
+#crop-box{position:absolute;border:2.5px solid var(--accent);border-radius:8px;box-shadow:0 0 0 100vmax rgba(0,0,0,.5);touch-action:none;cursor:move;}
+.crop-handle{position:absolute;right:-15px;bottom:-15px;width:30px;height:30px;background:var(--accent);border:3px solid #fff;border-radius:50%;touch-action:none;box-shadow:0 2px 6px rgba(0,0,0,.3);}
+.crop-hint{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-size:13px;font-weight:700;padding:6px 14px;border-radius:999px;z-index:4;white-space:nowrap;}
+.scan-progress{position:absolute;inset:0;background:rgba(20,15,10,.72);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-weight:700;z-index:5;}
 .spinner{width:52px;height:52px;border:5px solid rgba(255,255,255,.25);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .scan-actions{padding:16px 18px calc(18px + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -6px 20px rgba(60,120,110,.08);}

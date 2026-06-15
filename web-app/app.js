@@ -213,7 +213,77 @@
     $('scan-after').hidden = true;
     $('writing-toggle').hidden = true;
     $('scan-progress').hidden = true;
+    $('crop-overlay').hidden = true;
     $('scan-input').value = '';
+  }
+
+  // プレビュー画像にトリミング枠を表示し、画像の上に初期配置する
+  function showCrop() {
+    const img = $('scan-preview');
+    const place = () => {
+      if (!img.naturalWidth) return;
+      const body = img.closest('.scan-body');
+      const ir = img.getBoundingClientRect();
+      const pr = body.getBoundingClientRect();
+      const left = ir.left - pr.left, top = ir.top - pr.top;
+      const box = $('crop-box');
+      box.style.left = (left + ir.width * 0.08) + 'px';
+      box.style.top = (top + ir.height * 0.08) + 'px';
+      box.style.width = (ir.width * 0.84) + 'px';
+      box.style.height = (ir.height * 0.84) + 'px';
+      $('crop-overlay').hidden = false;
+    };
+    if (img.complete && img.naturalWidth) requestAnimationFrame(place);
+    else img.onload = () => requestAnimationFrame(place);
+  }
+
+  // トリミング枠のドラッグ（移動）とハンドル（リサイズ）
+  (function initCropDrag() {
+    const box = $('crop-box');
+    const handle = box.querySelector('.crop-handle');
+    let mode = null, sx = 0, sy = 0, ox = 0, oy = 0, ow = 0, oh = 0;
+    const bodyRect = () => $('scan-preview').closest('.scan-body').getBoundingClientRect();
+    function down(e, m) {
+      e.preventDefault(); e.stopPropagation();
+      mode = m;
+      const p = e.touches ? e.touches[0] : e;
+      sx = p.clientX; sy = p.clientY;
+      ox = box.offsetLeft; oy = box.offsetTop; ow = box.offsetWidth; oh = box.offsetHeight;
+      window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+    }
+    function move(e) {
+      if (!mode) return;
+      const br = bodyRect();
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      if (mode === 'move') {
+        box.style.left = Math.max(0, Math.min(ox + dx, br.width - ow)) + 'px';
+        box.style.top = Math.max(0, Math.min(oy + dy, br.height - oh)) + 'px';
+      } else {
+        box.style.width = Math.max(50, Math.min(ow + dx, br.width - box.offsetLeft)) + 'px';
+        box.style.height = Math.max(50, Math.min(oh + dy, br.height - box.offsetTop)) + 'px';
+      }
+    }
+    function up() { mode = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); }
+    box.addEventListener('pointerdown', (e) => down(e, 'move'));
+    handle.addEventListener('pointerdown', (e) => down(e, 'resize'));
+  })();
+
+  // トリミング枠の範囲を元画像の座標で切り出してdataURLを返す
+  function getCroppedDataUrl() {
+    const img = $('scan-preview');
+    if ($('crop-overlay').hidden || !img.naturalWidth) return capturedDataUrl;
+    const ir = img.getBoundingClientRect();
+    const br = $('crop-box').getBoundingClientRect();
+    const scaleX = img.naturalWidth / ir.width, scaleY = img.naturalHeight / ir.height;
+    let sx = (br.left - ir.left) * scaleX, sy = (br.top - ir.top) * scaleY;
+    let sw = br.width * scaleX, sh = br.height * scaleY;
+    sx = Math.max(0, sx); sy = Math.max(0, sy);
+    sw = Math.min(sw, img.naturalWidth - sx); sh = Math.min(sh, img.naturalHeight - sy);
+    if (sw < 10 || sh < 10) return capturedDataUrl;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(sw); canvas.height = Math.round(sh);
+    canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
   }
   $('btn-pick').addEventListener('click', () => $('scan-input').click());
   $('btn-retake').addEventListener('click', resetScan);
@@ -235,6 +305,7 @@
       $('scan-placeholder').hidden = true;
       $('scan-after').hidden = false;
       $('writing-toggle').hidden = false;
+      showCrop();
     };
     reader.readAsDataURL(file);
   });
@@ -287,6 +358,7 @@
           $('scan-after').hidden = false;
           $('writing-toggle').hidden = false;
           show('scan');
+          showCrop();
         };
         reader.readAsDataURL(file);
         return;
@@ -362,7 +434,9 @@
     const txt = $('scan-progress-text');
     const lang = ocrVertical ? 'jpn_vert' : 'jpn';
     try {
-      const processed = await preprocessImage(capturedDataUrl);
+      const cropped = getCroppedDataUrl();   // 枠で囲った範囲だけを読む（精度UP）
+      $('crop-overlay').hidden = true;
+      const processed = await preprocessImage(cropped);
       let text;
       try {
         // 高精度モデル(tessdata_best)：漢字・文脈の認識が標準より大きく向上
@@ -1014,7 +1088,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.22';
+  const APP_VERSION = '1.0.23';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
