@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.png" />
   <link rel="apple-touch-icon" href="icon.png" />
-  <link rel="stylesheet" href="styles.css?v=19" />
+  <link rel="stylesheet" href="styles.css?v=20" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
@@ -22,7 +22,10 @@
     <section class="screen active" id="screen-home">
       <header class="topbar">
         <span class="logo">よみたま</span>
-        <button class="icon-btn" id="btn-parent" aria-label="おうちのひと">⚙️</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="coin">🍚 <span id="home-coin">0</span></span>
+          <button class="icon-btn" id="btn-parent" aria-label="おうちのひと">⚙️</button>
+        </div>
       </header>
       <div class="scroll">
         <h1 class="pet-name" id="home-pet-name">たまちゃん</h1>
@@ -42,6 +45,12 @@
         <button class="big-btn accent" id="btn-scan">📷 きょうかしょを とる</button>
         <p class="app-version" id="app-version"></p>
       </div>
+      <nav class="bottomnav">
+        <button class="navitem active" data-nav="home"><span class="ni">🏠</span>ホーム</button>
+        <button class="navitem" data-nav="scan"><span class="ni">📷</span>きょうかしょ</button>
+        <button class="navitem" data-nav="stamp"><span class="ni">💖</span>きろく</button>
+        <button class="navitem" data-nav="settei"><span class="ni">⚙️</span>せってい</button>
+      </nav>
     </section>
 
     <!-- 2. スキャン -->
@@ -198,6 +207,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>

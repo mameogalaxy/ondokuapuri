@@ -198,6 +198,7 @@
     $('home-food').textContent = pet.energy;
     $('home-streak').textContent = pet.streakDays + '日';
     $('home-friend').textContent = pet.friendship;
+    const coin = $('home-coin'); if (coin) coin.textContent = pet.energy;
   }
 
   // ---------------- スキャン + OCR ----------------
@@ -999,11 +1000,19 @@
   $('btn-read-line').addEventListener('click', () => openList(true));
   document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => { stopMedia(); show(b.dataset.back); }));
 
+  // 下部ナビ
+  document.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => {
+    const nav = b.dataset.nav;
+    if (nav === 'home') show('home');
+    else if (nav === 'scan') { resetScan(); show('scan'); }
+    else openGate(); // きろく・せっていは おうちのひと（ゲート）へ
+  }));
+
   // 起動
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.19';
+  const APP_VERSION = '1.0.20';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
