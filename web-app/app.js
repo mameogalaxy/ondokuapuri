@@ -103,12 +103,14 @@
   let config = Store.load('config', {});
   const saveConfig = () => Store.save('config', config);
   const GEMINI_DEFAULT = {
-    model: 'gemini-2.5-flash',
+    model: 'gemini-flash-latest',          // 常に最新の無料Flash（数字を追わなくてよい）
+    modelLite: 'gemini-flash-lite-latest', // 軽量・コスパ用
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
   };
   const geminiCfg = () => ({
     key: (config.geminiKey || '').trim(),
     model: (config.geminiModel || GEMINI_DEFAULT.model).trim(),
+    modelLite: (config.geminiModelLite || GEMINI_DEFAULT.modelLite).trim(),
     endpoint: (config.geminiEndpoint || GEMINI_DEFAULT.endpoint).trim(),
   });
 
@@ -1047,6 +1049,7 @@
     const c = geminiCfg();
     $('set-key').value = config.geminiKey || '';
     $('set-model').value = config.geminiModel || GEMINI_DEFAULT.model;
+    $('set-model-lite').value = config.geminiModelLite || GEMINI_DEFAULT.modelLite;
     $('set-endpoint').value = config.geminiEndpoint || GEMINI_DEFAULT.endpoint;
     $('set-status').textContent = c.key ? 'AI読み取り：オン' : 'AI読み取り：オフ（キー未設定）';
     show('settings');
@@ -1055,6 +1058,7 @@
   if (btnSetSave) btnSetSave.addEventListener('click', () => {
     config.geminiKey = $('set-key').value.trim();
     config.geminiModel = $('set-model').value.trim() || GEMINI_DEFAULT.model;
+    config.geminiModelLite = $('set-model-lite').value.trim() || GEMINI_DEFAULT.modelLite;
     config.geminiEndpoint = $('set-endpoint').value.trim() || GEMINI_DEFAULT.endpoint;
     saveConfig();
     toast('せっていを ほぞんしたよ');
@@ -1063,6 +1067,7 @@
   const btnSetReset = $('btn-set-reset');
   if (btnSetReset) btnSetReset.addEventListener('click', () => {
     $('set-model').value = GEMINI_DEFAULT.model;
+    $('set-model-lite').value = GEMINI_DEFAULT.modelLite;
     $('set-endpoint').value = GEMINI_DEFAULT.endpoint;
   });
 
@@ -1173,7 +1178,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.27';
+  const APP_VERSION = '1.0.28';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;

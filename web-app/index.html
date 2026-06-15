@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.png?v=22" />
   <link rel="apple-touch-icon" href="icon.png?v=22" />
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=22" />
-  <link rel="stylesheet" href="styles.css?v=27" />
+  <link rel="stylesheet" href="styles.css?v=28" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
@@ -182,8 +182,12 @@
         </p>
         <label class="field-label">APIキー</label>
         <input type="text" id="set-key" class="text-input" placeholder="AIza... など" autocomplete="off" />
-        <label class="field-label">モデル名（変更があれば書き換え）</label>
-        <input type="text" id="set-model" class="text-input" placeholder="gemini-2.5-flash" autocomplete="off" />
+        <label class="field-label">モデル（メイン）</label>
+        <input type="text" id="set-model" class="text-input" placeholder="gemini-flash-latest" autocomplete="off" />
+        <p class="set-help">書類のOCRなど精度重視の処理に使用。既定の <b>gemini-flash-latest</b> は常に最新の無料Flashを指します（数字を追わなくてOK）。</p>
+        <label class="field-label">軽量モデル（コスパ用）</label>
+        <input type="text" id="set-model-lite" class="text-input" placeholder="gemini-flash-lite-latest" autocomplete="off" />
+        <p class="set-help">テキスト整理など、出力が少ない軽い処理に。</p>
         <label class="field-label">エンドポイント（{model} はモデル名に置換）</label>
         <input type="text" id="set-endpoint" class="text-input" placeholder="https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent" autocomplete="off" />
         <div class="row" style="margin-top:14px">
@@ -222,6 +226,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=27"></script>
+  <script src="app.js?v=28"></script>
 </body>
 </html>
