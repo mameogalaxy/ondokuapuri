@@ -8,14 +8,16 @@
 
   // ---------------- 進化段階 ----------------
   const STAGES = [
-    { key: 'egg',     label: 'たまご',       emoji: '🥚', req: 0 },
-    { key: 'chick',   label: 'ひよこ',       emoji: '🐣', req: 50 },
-    { key: 'child',   label: 'こどもペット', emoji: '🐤', req: 150 },
-    { key: 'evolved', label: '進化ペット',   emoji: '🦅', req: 350 },
-    { key: 'rare',    label: 'レア進化',     emoji: '🐉', req: 700 },
+    { key: 'egg',     label: 'たまご',       emoji: '🥚', img: 'pet-egg.png',     req: 0 },
+    { key: 'chick',   label: 'ひよこ',       emoji: '🐣', img: 'pet-chick.png',   req: 50 },
+    { key: 'child',   label: 'こどもペット', emoji: '🐤', img: 'pet-child.png',   req: 150 },
+    { key: 'evolved', label: '進化ペット',   emoji: '🦅', img: 'pet-evolved.png', req: 350 },
+    { key: 'rare',    label: 'レア進化',     emoji: '🐉', img: 'pet-rare.png',    req: 700 },
   ];
   const stageIndex = (key) => STAGES.findIndex((s) => s.key === key);
   const stageOf = (key) => STAGES[Math.max(0, stageIndex(key))];
+  // ペットの絵（画像が無ければ絵文字にフォールバック）
+  const petArt = (st) => `<img class="pet-art" src="${st.img}" alt="${st.label}" onerror="this.parentNode.textContent='${st.emoji}'">`;
 
   const STAMPS = [
     { key: 'great', emoji: '⭐', label: 'すごい！' },
@@ -188,7 +190,7 @@
     const st = stageOf(pet.stage);
     $('home-pet-name').textContent = pet.name;
     $('home-pet-sub').textContent = `${st.label}・レベル${pet.level}`;
-    $('home-pet').textContent = st.emoji;
+    $('home-pet').innerHTML = petArt(st);
     // 経験値バー（現段階内の進捗）
     const next = STAGES[stageIndex(pet.stage) + 1];
     let prog = 1;
@@ -537,7 +539,7 @@
   function startReading(text, single) {
     currentText = text; singleLineMode = single; lineIndex = 0;
     $('read-title').textContent = text.title;
-    $('read-pet').textContent = stageOf(pet.stage).emoji;
+    $('read-pet').innerHTML = petArt(stageOf(pet.stage));
     $('read-pet').className = 'pet small';
     $('read-cheer').hidden = true;
     $('vol-area').hidden = true;
@@ -874,7 +876,7 @@
 
   // ---------------- 結果 ----------------
   function showResult(r, durationSec) {
-    $('result-pet').textContent = stageOf(pet.stage).emoji;
+    $('result-pet').innerHTML = petArt(stageOf(pet.stage));
     $('result-pet').className = 'pet happy';
     $('result-msg').textContent = r.message;
     $('result-time').textContent = fmtTime(durationSec);
@@ -1012,7 +1014,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.20';
+  const APP_VERSION = '1.0.21';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;

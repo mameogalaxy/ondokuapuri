@@ -66,8 +66,11 @@ body{
   background:rgba(40,80,30,.22);filter:blur(3px);animation:petShadow 1.6s ease-in-out infinite;
 }
 @keyframes petShadow{0%,100%{transform:scale(1);opacity:.5;}50%{transform:scale(.82);opacity:.35;}}
-.pet{position:relative;z-index:1;font-size:128px;line-height:1;margin-bottom:24px;filter:drop-shadow(0 10px 8px rgba(40,80,30,.18));animation:idle 1.8s ease-in-out infinite;}
+.pet{position:relative;z-index:1;font-size:128px;line-height:1;margin-bottom:20px;filter:drop-shadow(0 10px 8px rgba(40,80,30,.18));animation:idle 1.8s ease-in-out infinite;}
 .pet.small{font-size:96px;margin-bottom:0;}
+.pet-art{height:180px;width:auto;display:block;}
+.pet.small .pet-art{height:128px;}
+.result .pet .pet-art{height:150px;}
 .pet.reading{animation:reading .5s ease-in-out infinite;}
 .pet.happy{animation:happy .55s ease-in-out infinite;}
 @keyframes idle{0%,100%{transform:translateY(0) rotate(-3deg);}50%{transform:translateY(-8px) rotate(3deg);}}
