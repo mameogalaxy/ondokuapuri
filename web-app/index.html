@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.png?v=22" />
   <link rel="apple-touch-icon" href="icon.png?v=22" />
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=22" />
-  <link rel="stylesheet" href="styles.css?v=28" />
+  <link rel="stylesheet" href="styles.css?v=29" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
@@ -78,7 +78,7 @@
       <div class="scan-actions">
         <!-- iPhoneのカメラ/写真を起動 -->
         <input type="file" accept="image/*" capture="environment" id="scan-input" hidden />
-        <input type="file" accept="image/*,application/pdf,text/plain,.txt,.md" id="import-input" hidden />
+        <input type="file" accept="image/*,application/pdf,text/plain,.txt,.md" id="import-input" multiple hidden />
         <div class="row">
           <button class="big-btn secondary half" id="btn-pick">しゃしんを とる</button>
           <button class="big-btn accent half" id="btn-import">ファイルから</button>
@@ -105,7 +105,10 @@
         <input type="text" id="edit-title" class="text-input" placeholder="れい：ちいちゃんのかげおくり" />
         <div class="field-row">
           <label class="field-label">ぶんしょう</label>
-          <button class="link-btn" id="btn-split">1文ずつに わける</button>
+          <div style="display:flex;gap:6px">
+            <button class="link-btn" id="btn-add-page">＋ページ</button>
+            <button class="link-btn" id="btn-split">1文ずつ</button>
+          </div>
         </div>
         <textarea id="edit-body" class="text-area" placeholder="ここに よみとった ぶんしょうが でるよ。まちがいは なおせるよ。"></textarea>
         <div class="row">
@@ -226,6 +229,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=28"></script>
+  <script src="app.js?v=29"></script>
 </body>
 </html>

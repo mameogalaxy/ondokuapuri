@@ -376,9 +376,37 @@
   // 画像・PDF・テキストファイルから取り込む（カメラ以外）
   $('btn-import').addEventListener('click', () => $('import-input').click());
   $('import-input').addEventListener('change', (e) => {
-    const file = e.target.files[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
-    if (file) handleImportFile(file);
+    if (!files.length) return;
+    if (files.length === 1) handleImportFile(files[0]); // 1枚はトリミングできる流れ
+    else handleMultipleFiles(files);                    // 複数はまとめて読み取り
+  });
+
+  // 複数ファイル（画像/PDF/テキスト）を順に読み取り、1つの文章に結合
+  async function handleMultipleFiles(files) {
+    show('scan');
+    $('scan-placeholder').hidden = true;
+    $('scan-progress').hidden = false;
+    const out = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const type = f.type || ''; const name = (f.name || '').toLowerCase();
+      $('scan-progress-text').textContent = `よみとっているよ… (${i + 1}/${files.length})`;
+      try {
+        if (type.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md')) {
+          out.push(cleanupOcr(await f.text()));
+        } else if (type === 'application/pdf' || name.endsWith('.pdf')) {
+          out.push(await pdfToText(f));
+        } else if (type.startsWith('image/')) {
+          out.push(await ocrImageDataUrl(await fileToDataUrl(f)));
+        }
+      } catch (_) { /* この1枚は飛ばす */ }
+    }
+    deliverOcrText(out.filter(Boolean).join('\n\n'));
+  }
+  const fileToDataUrl = (f) => new Promise((res, rej) => {
+    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f);
   });
 
   function loadScript(src) {
@@ -403,12 +431,14 @@
     const name = (file.name || '').toLowerCase();
     try {
       if (type.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md')) {
-        const text = await file.text();
-        openEdit({ body: cleanupOcr(text) });
+        deliverOcrText(cleanupOcr(await file.text()));
         return;
       }
       if (type === 'application/pdf' || name.endsWith('.pdf')) {
-        await importPdf(file);
+        show('scan'); $('scan-placeholder').hidden = true; $('scan-progress').hidden = false;
+        $('scan-progress-text').textContent = 'PDFを よみとっているよ…';
+        const t = await pdfToText(file);
+        deliverOcrText(t);
         return;
       }
       if (type.startsWith('image/')) {
@@ -433,41 +463,35 @@
     }
   }
 
-  async function importPdf(file) {
-    show('scan');
-    $('scan-placeholder').hidden = true;
-    $('scan-progress').hidden = false;
-    $('scan-progress-text').textContent = 'PDFを よみとっているよ…';
+  // PDF→テキスト（文字つきPDFは抽出、スキャンPDFは各ページを画像OCR）。最大10ページ。
+  async function pdfToText(file) {
     try {
       await ensurePdfJs();
       const buf = await file.arrayBuffer();
       const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
-      let text = '';
       const maxPages = Math.min(pdf.numPages, 10);
+      let text = '';
       for (let p = 1; p <= maxPages; p++) {
         const page = await pdf.getPage(p);
         const tc = await page.getTextContent();
         text += tc.items.map((i) => i.str).join('') + '\n';
       }
       text = text.trim();
-      if (text.replace(/\s/g, '').length >= 4) {
-        // 文字を持つPDF → そのまま使う（高品質）
-        $('scan-progress').hidden = true;
-        openEdit({ body: cleanupOcr(text) });
-        return;
+      if (text.replace(/\s/g, '').length >= 4) return cleanupOcr(text);
+      // 文字なし（スキャンPDF）→ 各ページを画像化してOCR
+      const out = [];
+      for (let p = 1; p <= maxPages; p++) {
+        const page = await pdf.getPage(p);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        out.push(await ocrImageDataUrl(canvas.toDataURL('image/png')));
       }
-      // スキャンPDF（文字なし）→ 1ページ目を画像化してOCR
-      const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 2 });
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width; canvas.height = viewport.height;
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-      capturedDataUrl = canvas.toDataURL('image/png');
-      await runOcr();
+      return out.filter(Boolean).join('\n\n');
     } catch (e) {
-      $('scan-progress').hidden = true;
       toast('PDFを よみとれませんでした');
-      openEdit({ body: '' });
+      return '';
     }
   }
 
@@ -492,43 +516,51 @@
     return data.text || '';
   }
 
+  // 1枚の画像(dataURL)からテキストを得る（Gemini優先→Tesseractフォールバック）
+  async function ocrImageDataUrl(dataUrl) {
+    const txt = $('scan-progress-text');
+    const lang = ocrVertical ? 'jpn_vert' : 'jpn';
+    if (geminiCfg().key) {
+      try {
+        txt.textContent = 'AIで よみとっているよ…';
+        const aiText = cleanupOcr(await geminiOcr(dataUrl));
+        if (aiText.replace(/\s/g, '').length >= 1) return aiText;
+      } catch (eAI) { /* 下にフォールバック */ }
+    }
+    const processed = await preprocessImage(dataUrl);
+    try {
+      return cleanupOcr(await recognizeWith(processed, lang, 'https://tessdata.projectnaptha.com/4.0.0_best', txt));
+    } catch (e1) {
+      return cleanupOcr(await recognizeWith(processed, lang, null, txt));
+    }
+  }
+
+  // OCR結果を編集画面へ。ページ追加モードなら既存本文に継ぎ足す。
+  let ocrAppend = false;
+  function deliverOcrText(text) {
+    if (ocrAppend) {
+      const cur = $('edit-body').value.trim();
+      $('edit-body').value = (cur ? cur + '\n\n' : '') + (text || '');
+      ocrAppend = false;
+      $('scan-progress').hidden = true;
+      show('edit');
+    } else {
+      openEdit({ body: text || '' });
+    }
+  }
+
   async function runOcr() {
     if (!capturedDataUrl) return;
     $('scan-progress').hidden = false;
-    const txt = $('scan-progress-text');
-    const lang = ocrVertical ? 'jpn_vert' : 'jpn';
     try {
       const cropped = getCroppedDataUrl();   // 枠で囲った範囲だけを読む（精度UP）
       $('crop-overlay').hidden = true;
-
-      // ① Gemini API（キーがあれば最優先・高精度）
-      if (geminiCfg().key) {
-        try {
-          txt.textContent = 'AIで よみとっているよ…';
-          const aiText = cleanupOcr(await geminiOcr(cropped));
-          if (aiText.replace(/\s/g, '').length >= 1) { openEdit({ body: aiText }); return; }
-        } catch (eAI) {
-          toast('AI読み取りにしっぱい。べつの方法で よむね');
-          // 下のTesseractにフォールバック
-        }
-      }
-
-      // ② Tesseract（オフライン・無料のフォールバック）
-      const processed = await preprocessImage(cropped);
-      let text;
-      try {
-        // 高精度モデル(tessdata_best)：漢字・文脈の認識が標準より大きく向上
-        text = await recognizeWith(processed, lang, 'https://tessdata.projectnaptha.com/4.0.0_best', txt);
-      } catch (e1) {
-        // 読み込めない時は標準モデルにフォールバック
-        text = await recognizeWith(processed, lang, null, txt);
-      }
-      openEdit({ body: cleanupOcr(text) });
+      const text = await ocrImageDataUrl(cropped);
+      deliverOcrText(text);
     } catch (err) {
       $('scan-progress').hidden = true;
       toast('よみとりに しっぱい。もう一度ためしてね');
-      // 失敗しても手入力で続けられるよう編集画面へ
-      openEdit({ body: '' });
+      deliverOcrText('');
     }
   }
 
@@ -615,6 +647,12 @@
   }
   $('btn-split').addEventListener('click', () => {
     $('edit-body').value = splitSentences($('edit-body').value).join('\n');
+  });
+  // ＋ページ：カメラ/ファイルから もう1枚 読み取って、いまの本文に継ぎ足す
+  $('btn-add-page').addEventListener('click', () => {
+    ocrAppend = true;       // 次のOCR結果は追記
+    resetScan();
+    show('scan');
   });
   function saveText(thenRead) {
     const body = $('edit-body').value.trim();
@@ -1178,7 +1216,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.28';
+  const APP_VERSION = '1.0.29';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
