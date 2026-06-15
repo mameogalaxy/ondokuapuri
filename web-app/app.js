@@ -161,6 +161,14 @@
 
   // ---------------- 育成ロジック ----------------
   const levelForExp = (exp) => Math.floor(exp / 50) + 1;
+  // 経験値に応じて進化段階を更新。進化したら true。
+  function evolveCheck() {
+    let idx = stageIndex(pet.stage);
+    let evolved = false;
+    while (idx + 1 < STAGES.length && pet.exp >= STAGES[idx + 1].req) { idx++; evolved = true; }
+    pet.stage = STAGES[idx].key;
+    return evolved;
+  }
 
   function isExtremelyShort(durationSec, chars) {
     if (chars <= 0) return false;
@@ -193,6 +201,8 @@
     } else {
       // 長い文章ほど多くもらえる：文字量ボーナス（最大+25）
       exp += Math.min(25, Math.floor(chars / 25));
+      // なかよしボーナス：仲良しなほど経験値が増える（最大+20）
+      exp += Math.min(20, Math.floor(pet.friendship / 2));
     }
     const gotTreasure = session.durationSec >= 180;
     if (gotTreasure) exp += 15;
@@ -210,10 +220,7 @@
     if (gotItem) pet.evolutionItems += 1;
 
     // 進化
-    let evolved = false;
-    let idx = stageIndex(pet.stage);
-    while (idx + 1 < STAGES.length && pet.exp >= STAGES[idx + 1].req) { idx++; evolved = true; }
-    pet.stage = STAGES[idx].key;
+    const evolved = evolveCheck();
 
     session.earnedExp = exp;
     session.isCompleted = true;
@@ -1223,6 +1230,20 @@
   // ---------------- ナビゲーション結線 ----------------
   const btnParent = $('btn-parent'); if (btnParent) btnParent.addEventListener('click', openParent);
   $('btn-scan').addEventListener('click', () => { resetScan(); show('scan'); });
+  // ごはんを あげる：ごはんを消費して経験値に変える
+  const btnFeed = $('btn-feed');
+  if (btnFeed) btnFeed.addEventListener('click', () => {
+    if (pet.energy <= 0) { toast('ごはんが ないよ。おんどくで ためよう！'); return; }
+    const feed = Math.min(pet.energy, 10);
+    pet.energy -= feed;
+    pet.exp += feed;
+    pet.level = levelForExp(pet.exp);
+    const evolved = evolveCheck();
+    savePet();
+    renderHome();
+    const rp = $('home-pet'); if (rp) { rp.classList.add('happy'); setTimeout(() => rp.classList.remove('happy'), 1200); }
+    toast(evolved ? `ごはん +${feed}！${stageOf(pet.stage).label}に しんかしたよ！` : `ごはんを あげた！けいけんち +${feed}`);
+  });
   $('btn-read').addEventListener('click', () => openList(false));
   $('btn-read-line').addEventListener('click', () => openList(true));
   document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => { stopMedia(); show(b.dataset.back); }));
@@ -1240,7 +1261,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.32';
+  const APP_VERSION = '1.0.33';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;

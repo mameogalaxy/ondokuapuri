@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.png?v=30" />
   <link rel="apple-touch-icon" href="icon.png?v=30" />
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=30" />
-  <link rel="stylesheet" href="styles.css?v=32" />
+  <link rel="stylesheet" href="styles.css?v=33" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
@@ -41,6 +41,7 @@
           <div class="stat"><div class="stat-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3c.5 3 3 4.5 3 8a4 4 0 0 1-8 0c0-2 .8-3 1.5-3.8C9.7 8.8 11 7 13 3z"/></svg></div><div class="stat-val" id="home-streak">0日</div><div class="stat-label">れんぞく</div></div>
           <div class="stat"><div class="stat-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.5-7 9-7 9z"/></svg></div><div class="stat-val" id="home-friend">0</div><div class="stat-label">なかよし</div></div>
         </div>
+        <button class="feed-btn" id="btn-feed">ごはんを あげる（けいけんち＋）</button>
         <button class="big-btn primary" id="btn-read">きょうの おんどく</button>
         <button class="big-btn secondary" id="btn-read-line">1ぎょうだけ よむ</button>
         <button class="big-btn accent" id="btn-scan">きょうかしょを とる</button>
@@ -233,6 +234,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=32"></script>
+  <script src="app.js?v=33"></script>
 </body>
 </html>

@@ -108,6 +108,8 @@ body{
 .big-btn.secondary::after{opacity:.25;}
 .big-btn.accent{background:linear-gradient(180deg,var(--teal),var(--teal-d));color:#fff;box-shadow:0 6px 0 rgba(10,130,110,.3), var(--shadow-sm);}
 .big-btn.half{margin:0;}
+.feed-btn{display:inline-block;border:none;background:#FFF3D8;color:#9A6B12;font-weight:900;font-size:15px;padding:12px 20px;border-radius:999px;margin:0 auto 14px;cursor:pointer;box-shadow:var(--shadow-sm);}
+.feed-btn:active{transform:translateY(1px);}
 .row{display:flex;gap:12px;max-width:480px;margin:0 auto 14px;}
 .row .big-btn{flex:1;margin:0;}
 
