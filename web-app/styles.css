@@ -76,6 +76,8 @@ body{
 .pet{position:relative;z-index:1;font-size:128px;line-height:1;margin-bottom:20px;filter:drop-shadow(0 10px 8px rgba(40,80,30,.18));animation:idle 1.8s ease-in-out infinite;}
 .pet.small{font-size:96px;margin-bottom:0;}
 .pet-art{height:180px;width:auto;display:block;}
+/* CSSが古い時の保険：画像が巨大化して見切れないように上限を付ける */
+.pet img{max-height:190px;width:auto;}
 .pet.small .pet-art{height:128px;}
 .result .pet .pet-art{height:150px;}
 .pet.reading{animation:reading .5s ease-in-out infinite;}

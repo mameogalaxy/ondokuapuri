@@ -16,8 +16,9 @@
   ];
   const stageIndex = (key) => STAGES.findIndex((s) => s.key === key);
   const stageOf = (key) => STAGES[Math.max(0, stageIndex(key))];
-  // ペットの絵（画像が無ければ絵文字にフォールバック）
-  const petArt = (st) => `<img class="pet-art" src="${st.img}?v=22" alt="${st.label}" onerror="this.parentNode.textContent='${st.emoji}'">`;
+  // ペットの絵（画像が無ければ絵文字にフォールバック）。?v= はキャッシュ更新用
+  const ASSET_V = '30';
+  const petArt = (st) => `<img class="pet-art" src="${st.img}?v=${ASSET_V}" alt="${st.label}" onerror="this.parentNode.textContent='${st.emoji}'">`;
 
   // 自作ピクトグラム（絵文字を使わず、線画アイコンで表現）
   const SVG = {
@@ -1216,7 +1217,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.29';
+  const APP_VERSION = '1.0.30';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
