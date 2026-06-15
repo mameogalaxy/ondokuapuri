@@ -172,6 +172,7 @@ body{
 .banner.treasure{background:linear-gradient(135deg,var(--accent),#FF9F3C);font-size:21px;}
 @keyframes pop{0%{transform:scale(.4);opacity:0;}70%{transform:scale(1.08);}100%{transform:scale(1);opacity:1;}}
 .streak-line{font-size:18px;font-weight:900;margin:8px 0;color:var(--pink-d);}
+.go-read{background:linear-gradient(180deg,var(--teal),var(--teal-d));color:#fff;font-weight:900;font-size:14px;padding:8px 14px;border-radius:14px;flex:none;}
 .go-read{font-size:14px;font-weight:900;color:var(--teal-d);background:#E9F9F4;border-radius:12px;padding:8px 12px;flex:none;}
 .soft-note{font-size:13px;color:var(--ink-soft);font-weight:600;}
 
