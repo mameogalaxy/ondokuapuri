@@ -17,7 +17,7 @@
   const stageIndex = (key) => STAGES.findIndex((s) => s.key === key);
   const stageOf = (key) => STAGES[Math.max(0, stageIndex(key))];
   // ペットの絵（画像が無ければ絵文字にフォールバック）
-  const petArt = (st) => `<img class="pet-art" src="${st.img}" alt="${st.label}" onerror="this.parentNode.textContent='${st.emoji}'">`;
+  const petArt = (st) => `<img class="pet-art" src="${st.img}?v=22" alt="${st.label}" onerror="this.parentNode.textContent='${st.emoji}'">`;
 
   const STAMPS = [
     { key: 'great', emoji: '⭐', label: 'すごい！' },
@@ -1014,7 +1014,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.21';
+  const APP_VERSION = '1.0.22';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
