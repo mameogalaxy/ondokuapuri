@@ -256,12 +256,18 @@
     $('home-pet-name').textContent = pet.name;
     $('home-pet-sub').textContent = `${st.label}・レベル${pet.level}`;
     $('home-pet').innerHTML = petArt(st);
-    // 経験値バー（現段階内の進捗）
+    // 経験値バー（現段階内の進捗）＋ つぎの しんかまでの案内
     const next = STAGES[stageIndex(pet.stage) + 1];
     let prog = 1;
     if (next) { const s = st.req, e = next.req; prog = Math.max(0, Math.min(1, (pet.exp - s) / (e - s))); }
     $('home-exp-fill').style.width = (prog * 100) + '%';
-    $('home-exp-label').textContent = `けいけんち ${pet.exp}`;
+    if (next) {
+      const remain = Math.max(0, next.req - pet.exp);
+      const verb = pet.stage === 'egg' ? 'うまれる' : 'しんかする';
+      $('home-exp-label').textContent = `けいけんち ${pet.exp} ／ あと ${remain} で ${next.label}に ${verb}！`;
+    } else {
+      $('home-exp-label').textContent = `けいけんち ${pet.exp} ／ さいだいまで そだったよ！`;
+    }
     $('home-food').textContent = pet.energy;
     $('home-streak').textContent = pet.streakDays + '日';
     $('home-friend').textContent = pet.friendship;
@@ -302,12 +308,12 @@
     else img.onload = () => requestAnimationFrame(place);
   }
 
-  // トリミング枠のドラッグ（移動）とハンドル（リサイズ）
+  // トリミング枠のドラッグ：本体で移動、8方向ハンドルでリサイズ
   (function initCropDrag() {
     const box = $('crop-box');
-    const handle = box.querySelector('.crop-handle');
     let mode = null, sx = 0, sy = 0, ox = 0, oy = 0, ow = 0, oh = 0;
     const bodyRect = () => $('scan-preview').closest('.scan-body').getBoundingClientRect();
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
     function down(e, m) {
       e.preventDefault(); e.stopPropagation();
       mode = m;
@@ -321,16 +327,27 @@
       const br = bodyRect();
       const dx = e.clientX - sx, dy = e.clientY - sy;
       if (mode === 'move') {
-        box.style.left = Math.max(0, Math.min(ox + dx, br.width - ow)) + 'px';
-        box.style.top = Math.max(0, Math.min(oy + dy, br.height - oh)) + 'px';
-      } else {
-        box.style.width = Math.max(50, Math.min(ow + dx, br.width - box.offsetLeft)) + 'px';
-        box.style.height = Math.max(50, Math.min(oh + dy, br.height - box.offsetTop)) + 'px';
+        box.style.left = clamp(ox + dx, 0, br.width - ow) + 'px';
+        box.style.top = clamp(oy + dy, 0, br.height - oh) + 'px';
+        return;
       }
+      const MIN = 50;
+      let L = ox, T = oy, W = ow, H = oh;
+      if (mode.includes('e')) W = ow + dx;
+      if (mode.includes('s')) H = oh + dy;
+      if (mode.includes('w')) { L = ox + dx; W = ow - dx; }
+      if (mode.includes('n')) { T = oy + dy; H = oh - dy; }
+      if (W < MIN) { if (mode.includes('w')) L = ox + ow - MIN; W = MIN; }
+      if (H < MIN) { if (mode.includes('n')) T = oy + oh - MIN; H = MIN; }
+      if (L < 0) { W += L; L = 0; }
+      if (T < 0) { H += T; T = 0; }
+      if (L + W > br.width) W = br.width - L;
+      if (T + H > br.height) H = br.height - T;
+      box.style.left = L + 'px'; box.style.top = T + 'px'; box.style.width = W + 'px'; box.style.height = H + 'px';
     }
     function up() { mode = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); }
     box.addEventListener('pointerdown', (e) => down(e, 'move'));
-    handle.addEventListener('pointerdown', (e) => down(e, 'resize'));
+    box.querySelectorAll('.ch').forEach((h) => h.addEventListener('pointerdown', (e) => down(e, h.dataset.dir)));
   })();
 
   // トリミング枠の範囲を元画像の座標で切り出してdataURLを返す
@@ -1217,7 +1234,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.30';
+  const APP_VERSION = '1.0.31';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;

@@ -125,7 +125,15 @@ body{
 /* トリミング枠 */
 #crop-overlay{position:absolute;inset:0;z-index:3;}
 #crop-box{position:absolute;border:2.5px solid var(--accent);border-radius:8px;box-shadow:0 0 0 100vmax rgba(0,0,0,.5);touch-action:none;cursor:move;}
-.crop-handle{position:absolute;right:-15px;bottom:-15px;width:30px;height:30px;background:var(--accent);border:3px solid #fff;border-radius:50%;touch-action:none;box-shadow:0 2px 6px rgba(0,0,0,.3);}
+.ch{position:absolute;width:26px;height:26px;background:var(--accent);border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.3);touch-action:none;}
+.ch[data-dir="nw"]{left:-14px;top:-14px;}
+.ch[data-dir="n"]{left:calc(50% - 13px);top:-14px;}
+.ch[data-dir="ne"]{right:-14px;top:-14px;}
+.ch[data-dir="w"]{left:-14px;top:calc(50% - 13px);}
+.ch[data-dir="e"]{right:-14px;top:calc(50% - 13px);}
+.ch[data-dir="sw"]{left:-14px;bottom:-14px;}
+.ch[data-dir="s"]{left:calc(50% - 13px);bottom:-14px;}
+.ch[data-dir="se"]{right:-14px;bottom:-14px;}
 .crop-hint{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-size:13px;font-weight:700;padding:6px 14px;border-radius:999px;z-index:4;white-space:nowrap;}
 .scan-progress{position:absolute;inset:0;background:rgba(20,15,10,.72);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-weight:700;z-index:5;}
 .spinner{width:52px;height:52px;border:5px solid rgba(255,255,255,.25);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;}

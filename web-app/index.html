@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.png?v=30" />
   <link rel="apple-touch-icon" href="icon.png?v=30" />
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=30" />
-  <link rel="stylesheet" href="styles.css?v=30" />
+  <link rel="stylesheet" href="styles.css?v=31" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
@@ -64,7 +64,11 @@
         <img id="scan-preview" alt="" hidden />
         <div id="crop-overlay" hidden>
           <div class="crop-hint">よむ ところを わくで かこってね</div>
-          <div id="crop-box"><span class="crop-handle"></span></div>
+          <div id="crop-box">
+            <span class="ch" data-dir="nw"></span><span class="ch" data-dir="n"></span><span class="ch" data-dir="ne"></span>
+            <span class="ch" data-dir="w"></span><span class="ch" data-dir="e"></span>
+            <span class="ch" data-dir="sw"></span><span class="ch" data-dir="s"></span><span class="ch" data-dir="se"></span>
+          </div>
         </div>
         <div id="scan-placeholder" class="scan-placeholder">
           <div class="scan-frame"></div>
@@ -229,6 +233,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=30"></script>
+  <script src="app.js?v=31"></script>
 </body>
 </html>
