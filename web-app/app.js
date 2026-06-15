@@ -186,8 +186,14 @@
     const now = new Date();
     const lc = linesOf(text.body).length;
     const food = lc > 0 ? lc : 1;
+    const chars = charCount(text.body);
     let exp = baseExp(session.durationSec);
-    if (isExtremelyShort(session.durationSec, charCount(text.body))) exp = 2;
+    if (isExtremelyShort(session.durationSec, chars)) {
+      exp = 2; // 極端に短い（読まずにスキップ）ときはボーナスなし
+    } else {
+      // 長い文章ほど多くもらえる：文字量ボーナス（最大+25）
+      exp += Math.min(25, Math.floor(chars / 25));
+    }
     const gotTreasure = session.durationSec >= 180;
     if (gotTreasure) exp += 15;
 
@@ -1234,7 +1240,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.31';
+  const APP_VERSION = '1.0.32';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
