@@ -236,28 +236,42 @@
     reader.readAsDataURL(file);
   });
   $('btn-ocr').addEventListener('click', runOcr);
+
+  // 指定モデルでOCR実行（langPathを変えて高精度/標準を切替）
+  async function recognizeWith(processed, lang, langPath, txt) {
+    const opts = {
+      logger: (m) => {
+        if (m.status === 'recognizing text') txt.textContent = `もじを よみとっているよ… ${Math.round(m.progress * 100)}%`;
+        else if (m.status && m.status.indexOf('loading') === 0) txt.textContent = 'じゅんびちゅう…（はじめは すこし まつよ）';
+      },
+    };
+    if (langPath) opts.langPath = langPath;
+    const worker = await Tesseract.createWorker(lang, 1, opts); // oem=1: LSTM
+    await worker.setParameters({
+      tessedit_pageseg_mode: ocrVertical ? '5' : '3', // 縦書き=5 / 横書き自動=3
+      preserve_interword_spaces: '0',
+    });
+    const { data } = await worker.recognize(processed);
+    await worker.terminate();
+    return data.text || '';
+  }
+
   async function runOcr() {
     if (!capturedDataUrl) return;
     $('scan-progress').hidden = false;
     const txt = $('scan-progress-text');
     const lang = ocrVertical ? 'jpn_vert' : 'jpn';
     try {
-      // 画像を前処理（拡大・グレースケール・コントラスト）して精度を上げる
       const processed = await preprocessImage(capturedDataUrl);
-      const worker = await Tesseract.createWorker(lang, 1, {
-        logger: (m) => {
-          if (m.status === 'recognizing text') txt.textContent = `もじを よみとっているよ… ${Math.round(m.progress * 100)}%`;
-        },
-      });
-      // 縦書きは縦1ブロック(5)、横書きは自動(3)。日本語は単語間スペース不要。
-      await worker.setParameters({
-        tessedit_pageseg_mode: ocrVertical ? '5' : '3',
-        preserve_interword_spaces: '0',
-      });
-      const { data } = await worker.recognize(processed);
-      await worker.terminate();
-      const cleaned = cleanupOcr(data.text || '');
-      openEdit({ body: cleaned });
+      let text;
+      try {
+        // 高精度モデル(tessdata_best)：漢字・文脈の認識が標準より大きく向上
+        text = await recognizeWith(processed, lang, 'https://tessdata.projectnaptha.com/4.0.0_best', txt);
+      } catch (e1) {
+        // 読み込めない時は標準モデルにフォールバック
+        text = await recognizeWith(processed, lang, null, txt);
+      }
+      openEdit({ body: cleanupOcr(text) });
     } catch (err) {
       $('scan-progress').hidden = true;
       toast('よみとりに しっぱい。もう一度ためしてね');
@@ -892,7 +906,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.17';
+  const APP_VERSION = '1.0.18';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
