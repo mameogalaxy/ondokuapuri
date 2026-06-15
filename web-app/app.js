@@ -19,6 +19,21 @@
   // ペットの絵（画像が無ければ絵文字にフォールバック）
   const petArt = (st) => `<img class="pet-art" src="${st.img}?v=22" alt="${st.label}" onerror="this.parentNode.textContent='${st.emoji}'">`;
 
+  // 自作ピクトグラム（絵文字を使わず、線画アイコンで表現）
+  const SVG = {
+    trash: '<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>',
+    play: '<path d="M8 5l12 7-12 7z" fill="currentColor" stroke="none"/>',
+    home: '<path d="M4 11l8-7 8 7M6 10v9h12v-9"/>',
+    book: '<path d="M4 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6z"/>',
+    list: '<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',
+    gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
+    bowl: '<path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M3.5 11c.8-3.6 4.4-6 8.5-6s7.7 2.4 8.5 6"/>',
+    flame: '<path d="M13 3c.5 3 3 4.5 3 8a4 4 0 0 1-8 0c0-2 .8-3 1.5-3.8C9.7 8.8 11 7 13 3z"/>',
+    heart: '<path d="M12 20s-7-4.5-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.5-7 9-7 9z"/>',
+  };
+  const icon = (name, cls = 'ic') =>
+    `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${SVG[name] || ''}</svg>`;
+
   const STAMPS = [
     { key: 'great', emoji: '⭐', label: 'すごい！' },
     { key: 'nice',  emoji: '👍', label: 'いいね' },
@@ -571,8 +586,8 @@
       div.className = 'list-card';
       div.innerHTML = `<div style="flex:1;min-width:0"><div class="ttl">${esc(t.title)}</div>
         <div class="prev">${esc(t.body.replace(/\n/g, ' '))}</div></div>
-        <button class="del-btn" title="さくじょ">けす</button>
-        <div class="go-read">よむ</div>`;
+        <button class="del-btn" title="さくじょ">${icon('trash')}</button>
+        <div class="go-read">${icon('play')}<span>よむ</span></div>`;
       div.addEventListener('click', () => startReading(t, singleLine));
       // 削除ボタン（カードのタップとは分離）
       div.querySelector('.del-btn').addEventListener('click', (e) => {
@@ -1087,7 +1102,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.24';
+  const APP_VERSION = '1.0.25';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;

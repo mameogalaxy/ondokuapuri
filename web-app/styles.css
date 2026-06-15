@@ -42,6 +42,12 @@ body{
 .coin{display:inline-flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:6px 14px 6px 10px;font-weight:900;color:var(--ink);box-shadow:var(--shadow-sm);font-size:16px;}
 .coin::before{content:"";width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 35% 30%, #FFE89A, #F3B12C);box-shadow:inset 0 0 0 2px #E29E18;}
 
+/* 自作ピクトグラム（線画アイコン） */
+.ic{width:24px;height:24px;display:inline-block;vertical-align:middle;}
+.navitem .ic{width:26px;height:26px;}
+.stat-ic{display:flex;justify-content:center;margin-bottom:3px;color:var(--teal-d);}
+.stat-ic .ic{width:24px;height:24px;}
+
 .scroll{flex:1;overflow-y:auto;padding:6px 18px 28px;-webkit-overflow-scrolling:touch;text-align:center;}
 #screen-home .scroll{padding-bottom:96px;} /* 下部ナビぶん */
 
@@ -144,7 +150,8 @@ body{
 .list-card:active{transform:scale(.98);}
 .list-card .ttl{font-size:19px;font-weight:900;}
 .list-card .prev{font-size:13px;color:var(--ink-soft);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-top:2px;}
-.del-btn{background:#FFE9EF;border:none;border-radius:14px;width:46px;height:46px;font-size:20px;cursor:pointer;flex:none;}
+.del-btn{background:#FFE9EF;border:none;border-radius:14px;width:46px;height:46px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;}
+.del-btn .ic{width:24px;height:24px;stroke:var(--pink-d);}
 .del-btn:active{transform:scale(.92);}
 
 /* 音読 */
@@ -172,7 +179,8 @@ body{
 .banner.treasure{background:linear-gradient(135deg,var(--accent),#FF9F3C);font-size:21px;}
 @keyframes pop{0%{transform:scale(.4);opacity:0;}70%{transform:scale(1.08);}100%{transform:scale(1);opacity:1;}}
 .streak-line{font-size:18px;font-weight:900;margin:8px 0;color:var(--pink-d);}
-.go-read{background:linear-gradient(180deg,var(--teal),var(--teal-d));color:#fff;font-weight:900;font-size:14px;padding:8px 14px;border-radius:14px;flex:none;}
+.go-read{background:linear-gradient(180deg,var(--teal),var(--teal-d));color:#fff;font-weight:900;font-size:14px;padding:8px 14px;border-radius:14px;flex:none;display:inline-flex;align-items:center;gap:6px;}
+.go-read .ic{width:18px;height:18px;}
 .go-read{font-size:14px;font-weight:900;color:var(--teal-d);background:#E9F9F4;border-radius:12px;padding:8px 12px;flex:none;}
 .soft-note{font-size:13px;color:var(--ink-soft);font-weight:600;}
 
