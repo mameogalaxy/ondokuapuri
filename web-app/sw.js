@@ -3,7 +3,7 @@
  * オフライン時のみキャッシュから表示します。これにより
  * ホーム画面に追加したアプリ(PWA)でも更新が反映されます。
  */
-const CACHE = 'yomitama-cache-v18';
+const CACHE = 'yomitama-cache-v19';
 
 self.addEventListener('install', () => {
   self.skipWaiting(); // 新しいSWをすぐ有効化

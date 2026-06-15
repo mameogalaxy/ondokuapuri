@@ -235,6 +235,103 @@
     };
     reader.readAsDataURL(file);
   });
+  // 画像・PDF・テキストファイルから取り込む（カメラ以外）
+  $('btn-import').addEventListener('click', () => $('import-input').click());
+  $('import-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (file) handleImportFile(file);
+  });
+
+  function loadScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.async = true;
+      s.onload = res; s.onerror = () => rej(new Error('load fail'));
+      document.head.appendChild(s);
+    });
+  }
+  let _pdfjs = null;
+  function ensurePdfJs() {
+    if (window.pdfjsLib) return Promise.resolve();
+    if (_pdfjs) return _pdfjs;
+    _pdfjs = loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js')
+      .then(() => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'; });
+    return _pdfjs;
+  }
+
+  async function handleImportFile(file) {
+    const type = file.type || '';
+    const name = (file.name || '').toLowerCase();
+    try {
+      if (type.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md')) {
+        const text = await file.text();
+        openEdit({ body: cleanupOcr(text) });
+        return;
+      }
+      if (type === 'application/pdf' || name.endsWith('.pdf')) {
+        await importPdf(file);
+        return;
+      }
+      if (type.startsWith('image/')) {
+        // 画像はカメラと同じ「プレビュー→よみとる」の流れに乗せる
+        const reader = new FileReader();
+        reader.onload = () => {
+          capturedDataUrl = reader.result;
+          $('scan-preview').src = capturedDataUrl;
+          $('scan-preview').hidden = false;
+          $('scan-placeholder').hidden = true;
+          $('scan-after').hidden = false;
+          $('writing-toggle').hidden = false;
+          show('scan');
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+      toast('このファイルは よみとれないよ');
+    } catch (err) {
+      toast('ファイルを ひらけませんでした');
+    }
+  }
+
+  async function importPdf(file) {
+    show('scan');
+    $('scan-placeholder').hidden = true;
+    $('scan-progress').hidden = false;
+    $('scan-progress-text').textContent = 'PDFを よみとっているよ…';
+    try {
+      await ensurePdfJs();
+      const buf = await file.arrayBuffer();
+      const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+      let text = '';
+      const maxPages = Math.min(pdf.numPages, 10);
+      for (let p = 1; p <= maxPages; p++) {
+        const page = await pdf.getPage(p);
+        const tc = await page.getTextContent();
+        text += tc.items.map((i) => i.str).join('') + '\n';
+      }
+      text = text.trim();
+      if (text.replace(/\s/g, '').length >= 4) {
+        // 文字を持つPDF → そのまま使う（高品質）
+        $('scan-progress').hidden = true;
+        openEdit({ body: cleanupOcr(text) });
+        return;
+      }
+      // スキャンPDF（文字なし）→ 1ページ目を画像化してOCR
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      capturedDataUrl = canvas.toDataURL('image/png');
+      await runOcr();
+    } catch (e) {
+      $('scan-progress').hidden = true;
+      toast('PDFを よみとれませんでした');
+      openEdit({ body: '' });
+    }
+  }
+
   $('btn-ocr').addEventListener('click', runOcr);
 
   // 指定モデルでOCR実行（langPathを変えて高精度/標準を切替）
@@ -906,7 +1003,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.18';
+  const APP_VERSION = '1.0.19';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
