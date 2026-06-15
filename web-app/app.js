@@ -152,8 +152,8 @@
     const leveledUp = pet.level > beforeLevel;
     let msg;
     if (evolved) msg = `${pet.name}が ${stageOf(pet.stage).label} に しんかしたよ！`;
-    else if (gotTreasure) msg = 'たくさん読めたね！宝箱が ひらいたよ✨';
-    else if (leveledUp) msg = 'レベルアップ！ペットがよろこんでる🎉';
+    else if (gotTreasure) msg = 'たくさん読めたね！宝箱が ひらいたよ';
+    else if (leveledUp) msg = 'レベルアップ！ペットが よろこんでる';
     else if (session.durationSec >= 60) msg = '今日もしっかり読めたね！';
     else if (session.durationSec >= 30) msg = 'いい声が聞こえたよ！';
     else msg = '声が聞こえたよ。今日も読めたね！';
@@ -181,7 +181,7 @@
   let _errShown = false;
   window.addEventListener('error', (e) => {
     if (_errShown) return; _errShown = true;
-    try { toast('⚠️ ' + (e.message || 'エラー')); } catch (_) {}
+    try { toast('エラー: ' + (e.message || '')); } catch (_) {}
     setTimeout(() => { _errShown = false; }, 3000);
   });
 
@@ -569,11 +569,10 @@
     texts.forEach((t) => {
       const div = document.createElement('div');
       div.className = 'list-card';
-      div.innerHTML = `<div style="font-size:30px">📖</div>
-        <div style="flex:1;min-width:0"><div class="ttl">${esc(t.title)}</div>
+      div.innerHTML = `<div style="flex:1;min-width:0"><div class="ttl">${esc(t.title)}</div>
         <div class="prev">${esc(t.body.replace(/\n/g, ' '))}</div></div>
-        <button class="del-btn" title="さくじょ">🗑️</button>
-        <div style="font-size:32px">▶️</div>`;
+        <button class="del-btn" title="さくじょ">けす</button>
+        <div class="go-read">よむ</div>`;
       div.addEventListener('click', () => startReading(t, singleLine));
       // 削除ボタン（カードのタップとは分離）
       div.querySelector('.del-btn').addEventListener('click', (e) => {
@@ -748,7 +747,7 @@
     const hira = toReadingHira(transcript) || transcript;
     const cleaned = hira.replace(/[\s、。，．・･「」『』（）()！？!?…—〜~"'’“”：；:;]/g, '');
     const tail = cleaned.slice(-12);
-    $('vol-text').textContent = tail ? `👂「${tail}」` : '👂 きこえてるよ！';
+    $('vol-text').textContent = tail ? `「${tail}」` : 'きこえてるよ！';
     $('vol-text').classList.remove('vol-quiet');
   }
 
@@ -835,7 +834,7 @@
       heardWatch = setInterval(() => {
         if (!recognizing) return;
         if (Date.now() - lastHeardAt > 2600) {
-          $('vol-text').textContent = '👂 きこえないよ？ もっと ちかづいて はっきり いってね';
+          $('vol-text').textContent = 'きこえないよ？ もっと ちかづいて はっきり いってね';
           $('vol-text').classList.add('vol-quiet');
         }
       }, 700);
@@ -895,7 +894,7 @@
     $('read-cheer').textContent = mode === 'speech'
       ? 'こえを きかせてね！よんだ ところに いろが つくよ'
       : 'こえを だすと 文字に いろが ついていくよ！';
-    $('vol-text').textContent = '🎤 きいているよ…';
+    $('vol-text').textContent = 'きいているよ…';
 
     timerInt = setInterval(() => {
       $('read-timer').textContent = fmtTime(Math.floor((Date.now() - recStart) / 1000));
@@ -958,10 +957,10 @@
     $('result-food').textContent = '+' + r.earnedFood;
     const banners = $('result-banners'); banners.innerHTML = '';
     const addBanner = (text, cls) => { const d = document.createElement('div'); d.className = 'banner ' + (cls || ''); d.textContent = text; banners.appendChild(d); };
-    if (r.leveledUp) addBanner('🎊 レベルアップ！ 🎊');
-    if (r.evolved && r.newStage) addBanner(`✨ ${stageOf(r.newStage).label} に しんか！ ✨`);
-    if (r.gotTreasure) addBanner('🎁 たからばこが ひらいたよ！', 'treasure');
-    if (r.gotItem) addBanner('🎁 5日れんぞく！しんかアイテム ゲット！');
+    if (r.leveledUp) addBanner('レベルアップ！');
+    if (r.evolved && r.newStage) addBanner(`${stageOf(r.newStage).label} に しんか！`);
+    if (r.gotTreasure) addBanner('たからばこが ひらいたよ！', 'treasure');
+    if (r.gotItem) addBanner('5日れんぞく！しんかアイテム ゲット！');
     $('result-streak').textContent = `れんぞく ${r.newStreak}日め！`;
     show('result');
   }
@@ -1065,7 +1064,7 @@
     pet.friendship += 1;
     saveFeedbacks(); saveSessions(); savePet();
     sheet.hidden = true;
-    toast('スタンプを おくったよ！なかよし度アップ💖');
+    toast('スタンプを おくったよ！なかよし度アップ');
     renderSessions(); renderStamps();
   });
 
@@ -1088,13 +1087,13 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.23';
+  const APP_VERSION = '1.0.24';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
     const seen = Store.load('seen_version', null);
     if (seen && seen !== APP_VERSION) {
-      toast(`✨ あたらしく なったよ！(ver.${APP_VERSION})`);
+      toast(`あたらしく なったよ！(ver.${APP_VERSION})`);
     }
     Store.save('seen_version', APP_VERSION);
   })();

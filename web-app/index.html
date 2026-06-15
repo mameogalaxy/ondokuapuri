@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.png?v=22" />
   <link rel="apple-touch-icon" href="icon.png?v=22" />
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=22" />
-  <link rel="stylesheet" href="styles.css?v=23" />
+  <link rel="stylesheet" href="styles.css?v=24" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
@@ -24,8 +24,8 @@
       <header class="topbar">
         <span class="logo">よみたま</span>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="coin">🍚 <span id="home-coin">0</span></span>
-          <button class="icon-btn" id="btn-parent" aria-label="おうちのひと">⚙️</button>
+          <span class="coin"><span id="home-coin">0</span></span>
+          <button class="icon-btn" id="btn-parent" aria-label="おうちのひと">親</button>
         </div>
       </header>
       <div class="scroll">
@@ -37,20 +37,20 @@
         <div class="expbar"><div class="expbar-fill" id="home-exp-fill"></div></div>
         <p class="exp-label" id="home-exp-label">けいけんち 0</p>
         <div class="stats">
-          <div class="stat"><div class="stat-emoji">🍚</div><div class="stat-val" id="home-food">0</div><div class="stat-label">ごはん</div></div>
-          <div class="stat"><div class="stat-emoji">🔥</div><div class="stat-val" id="home-streak">0日</div><div class="stat-label">れんぞく</div></div>
-          <div class="stat"><div class="stat-emoji">💖</div><div class="stat-val" id="home-friend">0</div><div class="stat-label">なかよし</div></div>
+          <div class="stat"><div class="stat-val" id="home-food">0</div><div class="stat-label">ごはん</div></div>
+          <div class="stat"><div class="stat-val" id="home-streak">0日</div><div class="stat-label">れんぞく</div></div>
+          <div class="stat"><div class="stat-val" id="home-friend">0</div><div class="stat-label">なかよし</div></div>
         </div>
-        <button class="big-btn primary" id="btn-read">📖 きょうの おんどく</button>
-        <button class="big-btn secondary" id="btn-read-line">➖ 1ぎょうだけ よむ</button>
-        <button class="big-btn accent" id="btn-scan">📷 きょうかしょを とる</button>
+        <button class="big-btn primary" id="btn-read">きょうの おんどく</button>
+        <button class="big-btn secondary" id="btn-read-line">1ぎょうだけ よむ</button>
+        <button class="big-btn accent" id="btn-scan">きょうかしょを とる</button>
         <p class="app-version" id="app-version"></p>
       </div>
       <nav class="bottomnav">
-        <button class="navitem active" data-nav="home"><span class="ni">🏠</span>ホーム</button>
-        <button class="navitem" data-nav="scan"><span class="ni">📷</span>きょうかしょ</button>
-        <button class="navitem" data-nav="stamp"><span class="ni">💖</span>きろく</button>
-        <button class="navitem" data-nav="settei"><span class="ni">⚙️</span>せってい</button>
+        <button class="navitem active" data-nav="home">ホーム</button>
+        <button class="navitem" data-nav="scan">きょうかしょ</button>
+        <button class="navitem" data-nav="stamp">きろく</button>
+        <button class="navitem" data-nav="settei">せってい</button>
       </nav>
     </section>
 
@@ -80,16 +80,16 @@
         <input type="file" accept="image/*" capture="environment" id="scan-input" hidden />
         <input type="file" accept="image/*,application/pdf,text/plain,.txt,.md" id="import-input" hidden />
         <div class="row">
-          <button class="big-btn secondary half" id="btn-pick">📷 しゃしんを とる</button>
-          <button class="big-btn accent half" id="btn-import">🖼 ファイルから</button>
+          <button class="big-btn secondary half" id="btn-pick">しゃしんを とる</button>
+          <button class="big-btn accent half" id="btn-import">ファイルから</button>
         </div>
         <div class="writing-toggle" id="writing-toggle" hidden>
           <button class="wt-btn active" data-dir="h">よこ書き</button>
           <button class="wt-btn" data-dir="v">たて書き</button>
         </div>
         <div class="row" id="scan-after" hidden>
-          <button class="big-btn secondary half" id="btn-retake">🔄 とりなおす</button>
-          <button class="big-btn primary half" id="btn-ocr">🔤 よみとる</button>
+          <button class="big-btn secondary half" id="btn-retake">とりなおす</button>
+          <button class="big-btn primary half" id="btn-ocr">よみとる</button>
         </div>
       </div>
     </section>
@@ -105,12 +105,12 @@
         <input type="text" id="edit-title" class="text-input" placeholder="れい：ちいちゃんのかげおくり" />
         <div class="field-row">
           <label class="field-label">ぶんしょう</label>
-          <button class="link-btn" id="btn-split">↵ 1文ずつに わける</button>
+          <button class="link-btn" id="btn-split">1文ずつに わける</button>
         </div>
         <textarea id="edit-body" class="text-area" placeholder="ここに よみとった ぶんしょうが でるよ。まちがいは なおせるよ。"></textarea>
         <div class="row">
-          <button class="big-btn secondary half" id="btn-save">💾 ほぞん</button>
-          <button class="big-btn primary half" id="btn-save-read">▶ よむ！</button>
+          <button class="big-btn secondary half" id="btn-save">ほぞん</button>
+          <button class="big-btn primary half" id="btn-save-read">よむ！</button>
         </div>
       </div>
     </section>
@@ -145,24 +145,24 @@
           <div class="volbar" id="volbar"></div>
           <p class="vol-text" id="vol-text">こえを きかせてね</p>
           <p class="timer" id="read-timer">00:00</p>
-          <button class="big-btn primary" id="btn-finish">✅ よみ おわった！</button>
+          <button class="big-btn primary" id="btn-finish">よみ おわった！</button>
         </div>
-        <button class="big-btn secondary" id="btn-rec-start">🎤 こえを よむ</button>
+        <button class="big-btn secondary" id="btn-rec-start">こえを よむ</button>
       </div>
     </section>
 
     <!-- 5. 結果 -->
     <section class="screen" id="screen-result">
       <div class="scroll result">
-        <h1 class="result-title">よく よめたね！🎉</h1>
+        <h1 class="result-title">よく よめたね！</h1>
         <div class="pet" id="result-pet">🥚</div>
         <div class="result-msg" id="result-msg"></div>
-        <div class="result-card"><span>⏱️ おんどく じかん</span><b id="result-time">00:00</b></div>
-        <div class="result-card"><span>⭐ けいけんち</span><b id="result-exp">+0</b></div>
-        <div class="result-card"><span>🍚 ごはん</span><b id="result-food">+0</b></div>
+        <div class="result-card"><span>おんどく じかん</span><b id="result-time">00:00</b></div>
+        <div class="result-card"><span>けいけんち</span><b id="result-exp">+0</b></div>
+        <div class="result-card"><span>ごはん</span><b id="result-food">+0</b></div>
         <div id="result-banners"></div>
         <p class="streak-line" id="result-streak"></p>
-        <button class="big-btn primary" id="btn-result-home">🏠 おうちに もどる</button>
+        <button class="big-btn primary" id="btn-result-home">おうちに もどる</button>
         <p class="soft-note">きょうは ここまででも OK。また こえを きかせてね！</p>
       </div>
     </section>
@@ -212,6 +212,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>
