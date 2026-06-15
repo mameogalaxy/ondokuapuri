@@ -97,6 +97,53 @@
   const saveSessions = () => Store.save('sessions', sessions);
   const saveFeedbacks = () => Store.save('feedbacks', feedbacks);
 
+  // ---------------- 設定（Gemini API） ----------------
+  // 将来 Google 側でモデル名やエンドポイントが変わっても、設定画面で変更すれば
+  // コード修正なしで対応できるようにしている。
+  let config = Store.load('config', {});
+  const saveConfig = () => Store.save('config', config);
+  const GEMINI_DEFAULT = {
+    model: 'gemini-2.0-flash',
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
+  };
+  const geminiCfg = () => ({
+    key: (config.geminiKey || '').trim(),
+    model: (config.geminiModel || GEMINI_DEFAULT.model).trim(),
+    endpoint: (config.geminiEndpoint || GEMINI_DEFAULT.endpoint).trim(),
+  });
+
+  // Gemini で画像から日本語テキストを抽出（高精度・縦書き対応）
+  async function geminiOcr(dataUrl) {
+    const c = geminiCfg();
+    if (!c.key) throw new Error('APIキーが未設定');
+    const base64 = (dataUrl.split(',')[1]) || '';
+    const mime = (dataUrl.match(/^data:(.*?);/) || [])[1] || 'image/png';
+    const url = c.endpoint.replace('{model}', encodeURIComponent(c.model)) + '?key=' + encodeURIComponent(c.key);
+    const body = {
+      contents: [{
+        parts: [
+          { text: '画像に写っている日本語の文章だけを、書かれている順序どおり（縦書きは右の行から、上から下へ）にそのまま文字に起こしてください。説明・注釈・ふりがなは付けず、本文テキストのみを出力してください。' },
+          { inline_data: { mime_type: mime, data: base64 } },
+        ],
+      }],
+      generationConfig: { temperature: 0 },
+    };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json()).error?.message || ''; } catch (_) {}
+      throw new Error('Gemini ' + res.status + (detail ? ': ' + detail : ''));
+    }
+    const json = await res.json();
+    const cand = (json.candidates || [])[0] || {};
+    const parts = (cand.content || {}).parts || [];
+    return parts.map((p) => p.text || '').join('').trim();
+  }
+
   // ---------------- 文章ユーティリティ ----------------
   const linesOf = (body) => body.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const charCount = (body) => body.replace(/\s/g, '').length;
@@ -451,6 +498,20 @@
     try {
       const cropped = getCroppedDataUrl();   // 枠で囲った範囲だけを読む（精度UP）
       $('crop-overlay').hidden = true;
+
+      // ① Gemini API（キーがあれば最優先・高精度）
+      if (geminiCfg().key) {
+        try {
+          txt.textContent = 'AIで よみとっているよ…';
+          const aiText = cleanupOcr(await geminiOcr(cropped));
+          if (aiText.replace(/\s/g, '').length >= 1) { openEdit({ body: aiText }); return; }
+        } catch (eAI) {
+          toast('AI読み取りにしっぱい。べつの方法で よむね');
+          // 下のTesseractにフォールバック
+        }
+      }
+
+      // ② Tesseract（オフライン・無料のフォールバック）
       const processed = await preprocessImage(cropped);
       let text;
       try {
@@ -981,19 +1042,28 @@
   }
   $('btn-result-home').addEventListener('click', () => show('home'));
 
-  // ---------------- 親ゲート ----------------
-  let gateA = 0, gateB = 0;
-  function openGate() {
-    gateA = 3 + Math.floor(Math.random() * 7);
-    gateB = 4 + Math.floor(Math.random() * 6);
-    $('gate-q').textContent = `${gateA} × ${gateB} = ?`;
-    $('gate-input').value = '';
-    $('gate-error').hidden = true;
-    show('gate');
+  // ---------------- せってい（Gemini API） ----------------
+  function openSettings() {
+    const c = geminiCfg();
+    $('set-key').value = config.geminiKey || '';
+    $('set-model').value = config.geminiModel || GEMINI_DEFAULT.model;
+    $('set-endpoint').value = config.geminiEndpoint || GEMINI_DEFAULT.endpoint;
+    $('set-status').textContent = c.key ? 'AI読み取り：オン' : 'AI読み取り：オフ（キー未設定）';
+    show('settings');
   }
-  $('btn-gate-go').addEventListener('click', () => {
-    if (parseInt($('gate-input').value, 10) === gateA * gateB) openParent();
-    else $('gate-error').hidden = false;
+  const btnSetSave = $('btn-set-save');
+  if (btnSetSave) btnSetSave.addEventListener('click', () => {
+    config.geminiKey = $('set-key').value.trim();
+    config.geminiModel = $('set-model').value.trim() || GEMINI_DEFAULT.model;
+    config.geminiEndpoint = $('set-endpoint').value.trim() || GEMINI_DEFAULT.endpoint;
+    saveConfig();
+    toast('せっていを ほぞんしたよ');
+    openSettings();
+  });
+  const btnSetReset = $('btn-set-reset');
+  if (btnSetReset) btnSetReset.addEventListener('click', () => {
+    $('set-model').value = GEMINI_DEFAULT.model;
+    $('set-endpoint').value = GEMINI_DEFAULT.endpoint;
   });
 
   // ---------------- 親画面 ----------------
@@ -1084,25 +1154,26 @@
   });
 
   // ---------------- ナビゲーション結線 ----------------
-  $('btn-parent').addEventListener('click', openGate);
+  const btnParent = $('btn-parent'); if (btnParent) btnParent.addEventListener('click', openParent);
   $('btn-scan').addEventListener('click', () => { resetScan(); show('scan'); });
   $('btn-read').addEventListener('click', () => openList(false));
   $('btn-read-line').addEventListener('click', () => openList(true));
   document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => { stopMedia(); show(b.dataset.back); }));
 
-  // 下部ナビ
+  // 下部ナビ（ゲートなしで直接ひらく）
   document.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => {
     const nav = b.dataset.nav;
     if (nav === 'home') show('home');
     else if (nav === 'scan') { resetScan(); show('scan'); }
-    else openGate(); // きろく・せっていは おうちのひと（ゲート）へ
+    else if (nav === 'settei') openSettings();
+    else openParent(); // きろく → 親画面
   }));
 
   // 起動
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.25';
+  const APP_VERSION = '1.0.26';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;

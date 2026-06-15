@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.png?v=22" />
   <link rel="apple-touch-icon" href="icon.png?v=22" />
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=22" />
-  <link rel="stylesheet" href="styles.css?v=25" />
+  <link rel="stylesheet" href="styles.css?v=26" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
@@ -167,19 +167,29 @@
       </div>
     </section>
 
-    <!-- 親ゲート -->
-    <section class="screen" id="screen-gate">
+    <!-- せってい（AI読み取り / Gemini API） -->
+    <section class="screen" id="screen-settings">
       <header class="topbar">
         <button class="icon-btn" data-back="home">←</button>
-        <span class="logo">おうちのひと かくにん</span><span></span>
+        <span class="logo">せってい</span><span></span>
       </header>
-      <div class="scroll gate">
-        <div class="lock">🔒</div>
-        <p>保護者の方へ：下の計算をしてください</p>
-        <p class="gate-q" id="gate-q">3 × 4 = ?</p>
-        <input type="number" id="gate-input" class="text-input center" inputmode="numeric" />
-        <p class="error" id="gate-error" hidden>もういちど ためしてください</p>
-        <button class="big-btn primary" id="btn-gate-go">すすむ</button>
+      <div class="scroll form">
+        <p class="set-status" id="set-status">AI読み取り：オフ</p>
+        <p style="font-size:13px;color:#8B7A6B;font-weight:600;line-height:1.6">
+          Gemini の APIキーを入れると、文字の読み取り（OCR）が高精度になります。
+          無料のキーは Google AI Studio（aistudio.google.com）で取得できます。
+          ※画像はGoogleに送られます。キーはこの端末にだけ保存されます。
+        </p>
+        <label class="field-label">APIキー</label>
+        <input type="text" id="set-key" class="text-input" placeholder="AIza... など" autocomplete="off" />
+        <label class="field-label">モデル名（変更があれば書き換え）</label>
+        <input type="text" id="set-model" class="text-input" placeholder="gemini-2.0-flash" autocomplete="off" />
+        <label class="field-label">エンドポイント（{model} はモデル名に置換）</label>
+        <input type="text" id="set-endpoint" class="text-input" placeholder="https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent" autocomplete="off" />
+        <div class="row" style="margin-top:14px">
+          <button class="big-btn secondary half" id="btn-set-reset">きほんに もどす</button>
+          <button class="big-btn primary half" id="btn-set-save">ほぞん</button>
+        </div>
       </div>
     </section>
 
@@ -212,6 +222,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>

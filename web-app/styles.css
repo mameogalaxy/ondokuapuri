@@ -224,5 +224,7 @@ body{
 /* トースト */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#3A2E22;color:#fff;padding:13px 22px;border-radius:999px;font-weight:800;z-index:100;max-width:90%;text-align:center;box-shadow:0 10px 24px rgba(0,0,0,.25);animation:pop .3s;}
 
+.set-status{font-weight:900;color:var(--teal-d);background:#E9F9F4;border-radius:14px;padding:10px 14px;text-align:center;}
+
 /* バージョン表示 */
 .app-version{margin:18px 0 6px;font-size:12px;font-weight:700;color:var(--ink-soft);opacity:.8;}
