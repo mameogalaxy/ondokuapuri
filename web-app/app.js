@@ -290,15 +290,51 @@
   // ---------------- スキャン + OCR ----------------
   let capturedDataUrl = null;
   let ocrVertical = false; // 縦書きモード（教科書は縦書きが多い）
+  let shotQueue = [];      // 連続撮影でためた画像（dataURL）
   function resetScan() {
     capturedDataUrl = null;
+    shotQueue = [];
     $('scan-preview').hidden = true;
     $('scan-placeholder').hidden = false;
     $('scan-after').hidden = true;
+    $('scan-after2').hidden = true;
     $('writing-toggle').hidden = true;
     $('scan-progress').hidden = true;
     $('crop-overlay').hidden = true;
+    $('btn-ocr').textContent = 'よみとる';
     $('scan-input').value = '';
+  }
+
+  // 撮影/選択した直後の表示（プレビュー＋操作ボタン＋トリミング枠）
+  function showAfterCapture() {
+    $('scan-preview').src = capturedDataUrl;
+    $('scan-preview').hidden = false;
+    $('scan-placeholder').hidden = true;
+    $('scan-after').hidden = false;
+    $('scan-after2').hidden = false;
+    $('writing-toggle').hidden = false;
+    $('btn-ocr').textContent = shotQueue.length ? `よみとる（${shotQueue.length + 1}まい）` : 'よみとる';
+    showCrop();
+  }
+
+  // 画像を deg 度 回転した dataURL を返す
+  function rotateDataUrl(dataUrl, deg) {
+    return new Promise((res) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        const rad = deg * Math.PI / 180;
+        if (deg % 180 === 0) { c.width = img.width; c.height = img.height; }
+        else { c.width = img.height; c.height = img.width; }
+        const ctx = c.getContext('2d');
+        ctx.translate(c.width / 2, c.height / 2);
+        ctx.rotate(rad);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        res(c.toDataURL('image/png'));
+      };
+      img.onerror = () => res(dataUrl);
+      img.src = dataUrl;
+    });
   }
 
   // プレビュー画像にトリミング枠を表示し、画像の上に初期配置する
@@ -391,18 +427,30 @@
   });
   $('scan-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
+    e.target.value = '';
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      capturedDataUrl = reader.result;
-      $('scan-preview').src = capturedDataUrl;
-      $('scan-preview').hidden = false;
-      $('scan-placeholder').hidden = true;
-      $('scan-after').hidden = false;
-      $('writing-toggle').hidden = false;
-      showCrop();
-    };
+    reader.onload = () => { capturedDataUrl = reader.result; showAfterCapture(); };
     reader.readAsDataURL(file);
+  });
+  // かいてん：撮った写真を90°回す（読みたい向きに）
+  $('btn-rotate').addEventListener('click', async () => {
+    if (!capturedDataUrl) return;
+    capturedDataUrl = await rotateDataUrl(capturedDataUrl, 90);
+    $('scan-preview').src = capturedDataUrl;
+    showCrop();
+  });
+  // ＋もう1まい：今の写真をためて、続けて次を撮る
+  $('btn-add-shot').addEventListener('click', () => {
+    if (!capturedDataUrl) return;
+    shotQueue.push(getCroppedDataUrl());
+    capturedDataUrl = null;
+    $('scan-preview').hidden = true;
+    $('scan-placeholder').hidden = false;
+    $('scan-after').hidden = true; $('scan-after2').hidden = true; $('writing-toggle').hidden = true;
+    $('crop-overlay').hidden = true;
+    toast(`${shotQueue.length}まい ためたよ。つぎを とってね`);
+    $('scan-input').click(); // 続けてカメラを開く
   });
   // 画像・PDF・テキストファイルから取り込む（カメラ以外）
   $('btn-import').addEventListener('click', () => $('import-input').click());
@@ -475,16 +523,7 @@
       if (type.startsWith('image/')) {
         // 画像はカメラと同じ「プレビュー→よみとる」の流れに乗せる
         const reader = new FileReader();
-        reader.onload = () => {
-          capturedDataUrl = reader.result;
-          $('scan-preview').src = capturedDataUrl;
-          $('scan-preview').hidden = false;
-          $('scan-placeholder').hidden = true;
-          $('scan-after').hidden = false;
-          $('writing-toggle').hidden = false;
-          show('scan');
-          showCrop();
-        };
+        reader.onload = () => { capturedDataUrl = reader.result; show('scan'); showAfterCapture(); };
         reader.readAsDataURL(file);
         return;
       }
@@ -581,13 +620,20 @@
   }
 
   async function runOcr() {
-    if (!capturedDataUrl) return;
+    // ためた写真（連続撮影）＋いまの写真 をまとめて読み取り
+    const shots = shotQueue.slice();
+    if (capturedDataUrl) shots.push(getCroppedDataUrl());
+    if (!shots.length) return;
+    $('crop-overlay').hidden = true;
     $('scan-progress').hidden = false;
     try {
-      const cropped = getCroppedDataUrl();   // 枠で囲った範囲だけを読む（精度UP）
-      $('crop-overlay').hidden = true;
-      const text = await ocrImageDataUrl(cropped);
-      deliverOcrText(text);
+      const parts = [];
+      for (let i = 0; i < shots.length; i++) {
+        if (shots.length > 1) $('scan-progress-text').textContent = `よみとっているよ… (${i + 1}/${shots.length})`;
+        parts.push(await ocrImageDataUrl(shots[i]));
+      }
+      shotQueue = [];
+      deliverOcrText(parts.filter(Boolean).join('\n\n'));
     } catch (err) {
       $('scan-progress').hidden = true;
       toast('よみとりに しっぱい。もう一度ためしてね');
@@ -1261,7 +1307,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.33';
+  const APP_VERSION = '1.0.34';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;

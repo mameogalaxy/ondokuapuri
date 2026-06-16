@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.png?v=30" />
   <link rel="apple-touch-icon" href="icon.png?v=30" />
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=30" />
-  <link rel="stylesheet" href="styles.css?v=33" />
+  <link rel="stylesheet" href="styles.css?v=34" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
@@ -94,6 +94,10 @@
         </div>
         <div class="row" id="scan-after" hidden>
           <button class="big-btn secondary half" id="btn-retake">とりなおす</button>
+          <button class="big-btn secondary half" id="btn-rotate">かいてん</button>
+        </div>
+        <div class="row" id="scan-after2" hidden>
+          <button class="big-btn accent half" id="btn-add-shot">＋ もう1まい</button>
           <button class="big-btn primary half" id="btn-ocr">よみとる</button>
         </div>
       </div>
@@ -234,6 +238,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=33"></script>
+  <script src="app.js?v=34"></script>
 </body>
 </html>
