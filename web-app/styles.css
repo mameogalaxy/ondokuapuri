@@ -104,6 +104,8 @@ body{
 .big-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:480px;margin:0 auto 14px;border:none;border-radius:22px;padding:18px;font-size:20px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(180deg,var(--pink),var(--pink-d));box-shadow:0 6px 0 rgba(200,70,120,.32), var(--shadow-sm);transition:transform .1s, box-shadow .1s;}
 .big-btn::after{content:"";position:absolute;inset:2px 2px 50%;border-radius:20px 20px 40px 40px;background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0));pointer-events:none;}
 .big-btn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(200,70,120,.32);}
+/* 押したのが分かる共通フィードバック（一瞬でも見えるようJSで付与） */
+.is-pressed{transform:scale(.9) !important;filter:brightness(.9) saturate(1.1);outline:3px solid rgba(255,255,255,.85);outline-offset:-3px;transition:transform .06s ease;}
 .big-btn.secondary{background:linear-gradient(180deg,#fff,#F3FBF8);color:var(--teal-d);box-shadow:0 6px 0 rgba(46,197,182,.22), var(--shadow-sm);}
 .big-btn.secondary::after{opacity:.25;}
 .big-btn.accent{background:linear-gradient(180deg,var(--teal),var(--teal-d));color:#fff;box-shadow:0 6px 0 rgba(10,130,110,.3), var(--shadow-sm);}

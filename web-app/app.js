@@ -263,6 +263,17 @@
     setTimeout(() => { _errShown = false; }, 3000);
   });
 
+  // 押した瞬間に見た目で分かるフィードバック（一瞬のタップでも残るよう少し保持）
+  document.addEventListener('pointerdown', (e) => {
+    const t = e.target.closest('button, .navitem, .wt-btn, .stamp-choice, .list-card, .go-read, .coin');
+    if (!t || t.classList.contains('ch')) return;
+    t.classList.add('is-pressed');
+    const clear = () => t.classList.remove('is-pressed');
+    setTimeout(clear, 220);
+    t.addEventListener('pointerup', clear, { once: true });
+    t.addEventListener('pointercancel', clear, { once: true });
+  }, true);
+
   // ---------------- ホーム ----------------
   function renderHome() {
     const st = stageOf(pet.stage);
@@ -1307,7 +1318,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.34';
+  const APP_VERSION = '1.0.35';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
