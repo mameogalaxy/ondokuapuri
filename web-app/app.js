@@ -328,7 +328,7 @@
     showCrop();
   }
 
-  // 画像を deg 度 回転した dataURL を返す
+  // 画像を deg 度 回転した dataURL を返す（JPEGで軽量に）
   function rotateDataUrl(dataUrl, deg) {
     return new Promise((res) => {
       const img = new Image();
@@ -341,7 +341,25 @@
         ctx.translate(c.width / 2, c.height / 2);
         ctx.rotate(rad);
         ctx.drawImage(img, -img.width / 2, -img.height / 2);
-        res(c.toDataURL('image/png'));
+        res(c.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = () => res(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
+  // 大きすぎる写真を縮小してJPEG化（回転やOCRを軽くする）。最大辺 max px。
+  function shrinkDataUrl(dataUrl, max) {
+    return new Promise((res) => {
+      const img = new Image();
+      img.onload = () => {
+        const m = Math.max(img.width, img.height);
+        if (m <= max) { res(dataUrl); return; }
+        const s = max / m;
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', 0.9));
       };
       img.onerror = () => res(dataUrl);
       img.src = dataUrl;
@@ -441,7 +459,7 @@
     e.target.value = '';
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => { capturedDataUrl = reader.result; showAfterCapture(); };
+    reader.onload = async () => { capturedDataUrl = await shrinkDataUrl(reader.result, 1800); showAfterCapture(); };
     reader.readAsDataURL(file);
   });
   // かいてん：撮った写真を90°回す（読みたい向きに）
@@ -534,7 +552,7 @@
       if (type.startsWith('image/')) {
         // 画像はカメラと同じ「プレビュー→よみとる」の流れに乗せる
         const reader = new FileReader();
-        reader.onload = () => { capturedDataUrl = reader.result; show('scan'); showAfterCapture(); };
+        reader.onload = async () => { capturedDataUrl = await shrinkDataUrl(reader.result, 1800); show('scan'); showAfterCapture(); };
         reader.readAsDataURL(file);
         return;
       }
@@ -943,15 +961,14 @@
     showHeard(transcript);
   }
 
-  // 認識の状況を画面に見せる（聞こえている言葉を“ひらがな”でライブ表示）
+  // 認識の状況を画面に見せる（聞こえた言葉を“ひらがな部分だけ”で表示。漢字は出さない）
   let lastHeardAt = 0;
   function showHeard(transcript) {
     lastHeardAt = Date.now();
-    // 読み(ひらがな)化してから、記号・「・」・句読点・空白を除いて表示
-    const hira = toReadingHira(transcript) || transcript;
-    const cleaned = hira.replace(/[\s、。，．・･「」『』（）()！？!?…—〜~"'’“”：；:;]/g, '');
-    const tail = cleaned.slice(-12);
-    $('vol-text').textContent = tail ? `「${tail}」` : 'きこえてるよ！';
+    // 漢字は出さない：ひらがな・カタカナだけ取り出して表示（読み間違いの混乱を防ぐ）
+    const kana = (transcript.match(/[ぁ-んァ-ヶー]/g) || []).join('');
+    const tail = kana.slice(-14);
+    $('vol-text').textContent = tail ? `きこえた：${tail}` : 'きこえてるよ！';
     $('vol-text').classList.remove('vol-quiet');
   }
 
@@ -1318,7 +1335,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.35';
+  const APP_VERSION = '1.0.36';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
