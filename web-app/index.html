@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.png?v=30" />
   <link rel="apple-touch-icon" href="icon.png?v=30" />
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=30" />
-  <link rel="stylesheet" href="styles.css?v=37" />
+  <link rel="stylesheet" href="styles.css?v=38" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
@@ -194,6 +194,10 @@
         </p>
         <label class="field-label">APIキー</label>
         <input type="text" id="set-key" class="text-input" placeholder="AIza... など" autocomplete="off" />
+        <div class="row" style="margin:8px 0 4px">
+          <button class="big-btn secondary half" id="btn-key-copy">キーを コピー</button>
+          <button class="big-btn accent half" id="btn-key-clear">キーを けす</button>
+        </div>
         <label class="field-label">モデル（メイン）</label>
         <input type="text" id="set-model" class="text-input" placeholder="gemini-flash-latest" autocomplete="off" />
         <p class="set-help">書類のOCRなど精度重視の処理に使用。既定の <b>gemini-flash-latest</b> は常に最新の無料Flashを指します（数字を追わなくてOK）。</p>
@@ -238,6 +242,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=37"></script>
+  <script src="app.js?v=38"></script>
 </body>
 </html>

@@ -1229,6 +1229,28 @@
     $('set-model-lite').value = GEMINI_DEFAULT.modelLite;
     $('set-endpoint').value = GEMINI_DEFAULT.endpoint;
   });
+  // APIキーを コピー
+  const btnKeyCopy = $('btn-key-copy');
+  if (btnKeyCopy) btnKeyCopy.addEventListener('click', async () => {
+    const k = ($('set-key').value || config.geminiKey || '').trim();
+    if (!k) { toast('コピーする キーが ないよ'); return; }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(k);
+      else { const t = $('set-key'); t.focus(); t.select(); document.execCommand('copy'); }
+      toast('キーを コピーしたよ');
+    } catch (_) { toast('コピーできませんでした'); }
+  });
+  // APIキーを 削除
+  const btnKeyClear = $('btn-key-clear');
+  if (btnKeyClear) btnKeyClear.addEventListener('click', () => {
+    if (!($('set-key').value || config.geminiKey)) { toast('キーは もう ないよ'); return; }
+    if (!confirm('APIキーを けしますか？（AI読み取りは オフに なります）')) return;
+    config.geminiKey = '';
+    $('set-key').value = '';
+    saveConfig();
+    openSettings();
+    toast('キーを けしたよ');
+  });
 
   // ---------------- 親画面 ----------------
   let parentAudioEl = null, playingId = null;
@@ -1351,7 +1373,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.37';
+  const APP_VERSION = '1.0.38';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
