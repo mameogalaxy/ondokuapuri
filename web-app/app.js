@@ -913,10 +913,26 @@
     return readKana.length > 0;
   }
 
-  // 照合対象の文字か（句読点・空白・記号・伸ばし棒・促音は除く＝滑舌差を吸収）
+  // 照合対象の文字か。読まなくてよい記号類は除外し、その箇所は自動で進む。
+  // 例: ○ ◯ ⚪︎ ● ■ □ ◆ ★ ☆ ① ② 〇 ※ → 【】《》()！？ 句読点・空白・伸ばし棒・促音 など
+  // （ひらがな/カタカナ/漢字/数字は対象として残す）
+  const MATCH_SKIP = '・ー々ゝゞヽヾっッ※→←↑↓〆〇';
   function isMatchable(ch) {
     if (/\s/.test(ch)) return false;
-    return !/[、。，．・「」『』（）()！？!?…—〜~"'：；:;ー―ｰっッゝゞヽヾ々]/.test(ch);
+    const c = ch.codePointAt(0);
+    if (c >= 0x2000 && c <= 0x206F) return false; // 一般句読点
+    if (c >= 0x2190 && c <= 0x21FF) return false; // 矢印
+    if (c >= 0x2460 && c <= 0x24FF) return false; // 丸数字 ①②
+    if (c >= 0x2500 && c <= 0x27BF) return false; // 罫線/幾何図形/記号
+    if (c >= 0x2B00 && c <= 0x2BFF) return false; // 補助記号
+    if (c >= 0x3000 && c <= 0x303F) return false; // CJK記号と句読点
+    if (c >= 0xFE00 && c <= 0xFE0F) return false; // 異体字セレクタ
+    if (c >= 0xFF01 && c <= 0xFF0F) return false; // 全角記号
+    if (c >= 0xFF1A && c <= 0xFF20) return false;
+    if (c >= 0xFF3B && c <= 0xFF40) return false;
+    if (c >= 0xFF5B && c <= 0xFF65) return false;
+    if (MATCH_SKIP.indexOf(ch) >= 0) return false;
+    return true;
   }
   // 正規化：カタカナ→ひらがな、小さい仮名→大きい仮名、英字は小文字に
   const SMALL_KANA = { 'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゃ':'や','ゅ':'ゆ','ょ':'よ','ゎ':'わ','ゕ':'か','ゖ':'け' };
@@ -1335,7 +1351,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.36';
+  const APP_VERSION = '1.0.37';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
