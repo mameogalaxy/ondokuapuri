@@ -1252,6 +1252,41 @@
     toast('キーを けしたよ');
   });
 
+  // QRコード共有：オーナーがQR表示 → 家族がカメラで読むとキーが入る
+  function ensureQrLib() {
+    if (window.qrcode) return Promise.resolve();
+    return loadScript('https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js');
+  }
+  function keyShareUrl(key) {
+    return location.origin + location.pathname + '#k=' + encodeURIComponent(key);
+  }
+  const btnQrShare = $('btn-qr-share');
+  if (btnQrShare) btnQrShare.addEventListener('click', async () => {
+    const key = (config.geminiKey || $('set-key').value || '').trim();
+    if (!key) { toast('さきに APIキーを ほぞんしてね'); return; }
+    try {
+      await ensureQrLib();
+      const qr = window.qrcode(0, 'M');
+      qr.addData(keyShareUrl(key));
+      qr.make();
+      $('qr-box').innerHTML = qr.createImgTag(6, 8);
+      $('qr-modal').hidden = false;
+    } catch (_) { toast('QRを つくれませんでした'); }
+  });
+  const btnQrClose = $('btn-qr-close');
+  if (btnQrClose) btnQrClose.addEventListener('click', () => { $('qr-modal').hidden = true; });
+
+  // 受け取り側：URLの #k=... があればキーを取り込み、URLからは消す
+  function applyKeyFromHash() {
+    const m = (location.hash || '').match(/[#&]k=([^&]+)/);
+    if (!m) return;
+    try {
+      const key = decodeURIComponent(m[1]);
+      if (key) { config.geminiKey = key; saveConfig(); toast('APIキーを うけとったよ！AIで よめるよ'); }
+    } catch (_) {}
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+  }
+
   // ---------------- 親画面 ----------------
   let parentAudioEl = null, playingId = null;
   function openParent() { renderSessions(); renderStamps(); switchTab('sessions'); show('parent'); }
@@ -1370,10 +1405,11 @@
   }));
 
   // 起動
+  applyKeyFromHash(); // QRから受け取ったキーを取り込む
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.38';
+  const APP_VERSION = '1.0.39';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;

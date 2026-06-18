@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.png?v=30" />
   <link rel="apple-touch-icon" href="icon.png?v=30" />
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=30" />
-  <link rel="stylesheet" href="styles.css?v=38" />
+  <link rel="stylesheet" href="styles.css?v=39" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
@@ -210,6 +210,8 @@
           <button class="big-btn secondary half" id="btn-set-reset">きほんに もどす</button>
           <button class="big-btn primary half" id="btn-set-save">ほぞん</button>
         </div>
+        <button class="big-btn accent" id="btn-qr-share" style="margin-top:4px">QRコードで かぞくに きょうゆう</button>
+        <p class="set-help">家族のスマホの カメラで このQRを よみとると、APIキーが はいって すぐ使えます（入力ふよう）。<b>QRにはキーが含まれます</b>ので、見せる相手に気をつけてください。</p>
       </div>
     </section>
 
@@ -242,6 +244,16 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=38"></script>
+  <!-- QR共有モーダル -->
+  <div class="sheet-backdrop" id="qr-modal" hidden>
+    <div class="sheet">
+      <h2>QRコードで きょうゆう</h2>
+      <p class="set-help" style="text-align:center">家族のスマホの カメラで よみとると、APIキーが はいるよ。<br>※キーが ふくまれます。みせる あいてに 気をつけてね。</p>
+      <div id="qr-box" style="display:flex;justify-content:center;padding:12px"></div>
+      <button class="big-btn primary" id="btn-qr-close">とじる</button>
+    </div>
+  </div>
+
+  <script src="app.js?v=39"></script>
 </body>
 </html>
