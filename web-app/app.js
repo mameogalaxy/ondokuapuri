@@ -21,6 +21,12 @@
       { key: 'child',   label: 'こども', emoji: '🐰', img: 'rabbit-child.png',   req: 150 },
       { key: 'evolved', label: 'はかせ', emoji: '🐰', img: 'rabbit-evolved.png', req: 350 },
     ] },
+    owl: { label: 'ふくろう', emoji: '🦉', stages: [
+      { key: 'egg',     label: 'たまご', emoji: '🥚', img: 'owl-egg.png',     req: 0 },
+      { key: 'baby',    label: 'ベビー', emoji: '🦉', img: 'owl-baby.png',    req: 50 },
+      { key: 'child',   label: 'こども', emoji: '🦉', img: 'owl-child.png',   req: 150 },
+      { key: 'evolved', label: 'はかせ', emoji: '🦉', img: 'owl-evolved.png', req: 350 },
+    ] },
   };
   const speciesOf = (p) => SPECIES[p && p.species] || SPECIES.dragon;
   const stagesOf = (p) => speciesOf(p).stages;
@@ -1414,7 +1420,7 @@
     openCollection();
   }
   function addPet(species) {
-    const names = { dragon: 'たまちゃん', rabbit: 'うさちゃん' };
+    const names = { dragon: 'たまちゃん', rabbit: 'うさちゃん', owl: 'ふくちゃん' };
     pets.push({ id: uid(), species, name: names[species] || 'たまちゃん', stage: 'egg', exp: 0, level: 1 });
     saveAll();
     $('species-sheet').hidden = true;
@@ -1561,7 +1567,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.41';
+  const APP_VERSION = '1.0.42';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
