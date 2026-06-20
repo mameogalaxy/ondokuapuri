@@ -1276,6 +1276,55 @@
   const btnQrClose = $('btn-qr-close');
   if (btnQrClose) btnQrClose.addEventListener('click', () => { $('qr-modal').hidden = true; });
 
+  // アプリ内でQRをカメラ読み取り（ホーム画面アプリでも確実にキーを取り込める）
+  function ensureJsQR() {
+    if (window.jsQR) return Promise.resolve();
+    return loadScript('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js');
+  }
+  let qrStream = null, qrRAF = null;
+  async function startQrScan() {
+    try { await ensureJsQR(); } catch (_) { toast('じゅんびに しっぱい'); return; }
+    try { qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); }
+    catch (e) { toast('カメラを つかえないよ（きょかを かくにん）'); return; }
+    const v = $('qrscan-video');
+    v.srcObject = qrStream;
+    try { await v.play(); } catch (_) {}
+    $('qrscan-modal').hidden = false;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const tick = () => {
+      if (!qrStream) return;
+      if (v.readyState >= 2 && v.videoWidth) {
+        canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+        let code = null;
+        try { const d = ctx.getImageData(0, 0, canvas.width, canvas.height); code = window.jsQR(d.data, d.width, d.height); } catch (_) {}
+        if (code && code.data) { handleScannedQr(code.data); return; }
+      }
+      qrRAF = requestAnimationFrame(tick);
+    };
+    qrRAF = requestAnimationFrame(tick);
+  }
+  function stopQrScan() {
+    if (qrRAF) cancelAnimationFrame(qrRAF); qrRAF = null;
+    if (qrStream) { qrStream.getTracks().forEach((t) => t.stop()); qrStream = null; }
+    const v = $('qrscan-video'); if (v) v.srcObject = null;
+    $('qrscan-modal').hidden = true;
+  }
+  function handleScannedQr(data) {
+    let key = '';
+    const m = (data || '').match(/[#&?]k=([^&]+)/);
+    if (m) { try { key = decodeURIComponent(m[1]); } catch (_) { key = m[1]; } }
+    else if (/^[A-Za-z0-9_\-]{20,}$/.test((data || '').trim())) key = data.trim();
+    stopQrScan();
+    if (key) { config.geminiKey = key; saveConfig(); openSettings(); toast('APIキーを よみとったよ！'); }
+    else toast('このQRは キーじゃ ないみたい');
+  }
+  const btnQrScan = $('btn-qr-scan');
+  if (btnQrScan) btnQrScan.addEventListener('click', startQrScan);
+  const btnQrScanClose = $('btn-qrscan-close');
+  if (btnQrScanClose) btnQrScanClose.addEventListener('click', stopQrScan);
+
   // 受け取り側：URLの #k=... があればキーを取り込み、URLからは消す
   function applyKeyFromHash() {
     const m = (location.hash || '').match(/[#&]k=([^&]+)/);
@@ -1393,7 +1442,7 @@
   });
   $('btn-read').addEventListener('click', () => openList(false));
   $('btn-read-line').addEventListener('click', () => openList(true));
-  document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => { stopMedia(); show(b.dataset.back); }));
+  document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => { stopMedia(); stopQrScan(); show(b.dataset.back); }));
 
   // 下部ナビ（ゲートなしで直接ひらく）
   document.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => {
@@ -1409,7 +1458,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.39';
+  const APP_VERSION = '1.0.40';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
