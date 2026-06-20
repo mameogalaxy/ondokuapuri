@@ -6,19 +6,32 @@
 (() => {
   'use strict';
 
-  // ---------------- 進化段階 ----------------
-  const STAGES = [
-    { key: 'egg',     label: 'たまご',       emoji: '🥚', img: 'pet-egg.png',     req: 0 },
-    { key: 'chick',   label: 'ひよこ',       emoji: '🐣', img: 'pet-chick.png',   req: 50 },
-    { key: 'child',   label: 'こどもペット', emoji: '🐤', img: 'pet-child.png',   req: 150 },
-    { key: 'evolved', label: '進化ペット',   emoji: '🦅', img: 'pet-evolved.png', req: 350 },
-    { key: 'rare',    label: 'レア進化',     emoji: '🐉', img: 'pet-rare.png',    req: 700 },
-  ];
-  const stageIndex = (key) => STAGES.findIndex((s) => s.key === key);
-  const stageOf = (key) => STAGES[Math.max(0, stageIndex(key))];
+  // ---------------- キャラクター（種類ごとの進化段階） ----------------
+  const SPECIES = {
+    dragon: { label: 'ドラゴン', emoji: '🐉', stages: [
+      { key: 'egg',     label: 'たまご',   emoji: '🥚', img: 'pet-egg.png',     req: 0 },
+      { key: 'chick',   label: 'ひよこ',   emoji: '🐣', img: 'pet-chick.png',   req: 50 },
+      { key: 'child',   label: 'こども',   emoji: '🐤', img: 'pet-child.png',   req: 150 },
+      { key: 'evolved', label: 'しんか',   emoji: '🦅', img: 'pet-evolved.png', req: 350 },
+      { key: 'rare',    label: 'レアしんか', emoji: '🐲', img: 'pet-rare.png',  req: 700 },
+    ] },
+    rabbit: { label: 'うさぎ', emoji: '🐰', stages: [
+      { key: 'egg',     label: 'たまご', emoji: '🥚', img: 'rabbit-egg.png',     req: 0 },
+      { key: 'baby',    label: 'ベビー', emoji: '🐰', img: 'rabbit-baby.png',    req: 50 },
+      { key: 'child',   label: 'こども', emoji: '🐰', img: 'rabbit-child.png',   req: 150 },
+      { key: 'evolved', label: 'はかせ', emoji: '🐰', img: 'rabbit-evolved.png', req: 350 },
+    ] },
+  };
+  const speciesOf = (p) => SPECIES[p && p.species] || SPECIES.dragon;
+  const stagesOf = (p) => speciesOf(p).stages;
+  function stageIdx(p) { const ss = stagesOf(p); const i = ss.findIndex((s) => s.key === p.stage); return i < 0 ? 0 : i; }
+  function stageObj(p) { return stagesOf(p)[stageIdx(p)]; }
   // ペットの絵（画像が無ければ絵文字にフォールバック）。?v= はキャッシュ更新用
-  const ASSET_V = '30';
-  const petArt = (st) => `<img class="pet-art" src="${st.img}?v=${ASSET_V}" alt="${st.label}" onerror="this.parentNode.textContent='${st.emoji}'">`;
+  const ASSET_V = '40';
+  function petArt(p) {
+    const st = stageObj(p);
+    return `<img class="pet-art" src="${st.img}?v=${ASSET_V}" alt="${st.label}" onerror="this.parentNode.textContent='${st.emoji}'">`;
+  }
 
   // 自作ピクトグラム（絵文字を使わず、線画アイコンで表現）
   const SVG = {
@@ -84,16 +97,50 @@
 
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-  // ---------------- 状態 ----------------
-  let pet = Store.load('pet', null) || {
-    id: 'pet_main', name: 'たまちゃん', stage: 'egg', level: 1, exp: 0,
-    friendship: 0, energy: 0, lastReadAt: null, streakDays: 0, evolutionItems: 0,
-  };
+  // ---------------- 状態（複数キャラ対応） ----------------
+  // account = 共有ステータス（ごはん・れんぞく・なかよし等）
+  // pets    = 育てているキャラの一覧（それぞれ exp/stage/species/name）
+  // activeId= いま いっしょに育てているキャラのID。pet はその参照。
+  let account, pets, activeId, pet;
+  (function loadPets() {
+    const data = Store.load('petsData', null);
+    if (data && data.pets && data.pets.length) {
+      account = data.account || {};
+      pets = data.pets;
+      activeId = data.activeId || pets[0].id;
+    } else {
+      // 旧データ（単一pet）からの移行 or 新規
+      const old = Store.load('pet', null);
+      account = {
+        energy: old ? (old.energy || 0) : 0,
+        streakDays: old ? (old.streakDays || 0) : 0,
+        friendship: old ? (old.friendship || 0) : 0,
+        lastReadAt: old ? (old.lastReadAt || null) : null,
+        evolutionItems: old ? (old.evolutionItems || 0) : 0,
+      };
+      pets = [{
+        id: (old && old.id) || uid(),
+        species: 'dragon',
+        name: (old && old.name) || 'たまちゃん',
+        stage: (old && old.stage) || 'egg',
+        exp: (old && old.exp) || 0,
+        level: (old && old.level) || 1,
+      }];
+      activeId = pets[0].id;
+    }
+    if (account.energy == null) account.energy = 0;
+    if (account.friendship == null) account.friendship = 0;
+    if (account.streakDays == null) account.streakDays = 0;
+    pet = pets.find((p) => p.id === activeId) || pets[0];
+    activeId = pet.id;
+  })();
+
   let texts = Store.load('texts', []);
   let sessions = Store.load('sessions', []);
   let feedbacks = Store.load('feedbacks', []);
 
-  const savePet = () => Store.save('pet', pet);
+  const saveAll = () => Store.save('petsData', { account, pets, activeId });
+  const savePet = saveAll; // 互換
   const saveTexts = () => Store.save('texts', texts);
   const saveSessions = () => Store.save('sessions', sessions);
   const saveFeedbacks = () => Store.save('feedbacks', feedbacks);
@@ -162,11 +209,13 @@
   // ---------------- 育成ロジック ----------------
   const levelForExp = (exp) => Math.floor(exp / 50) + 1;
   // 経験値に応じて進化段階を更新。進化したら true。
-  function evolveCheck() {
-    let idx = stageIndex(pet.stage);
+  function evolveCheck(p) {
+    p = p || pet;
+    const ss = stagesOf(p);
+    let idx = stageIdx(p);
     let evolved = false;
-    while (idx + 1 < STAGES.length && pet.exp >= STAGES[idx + 1].req) { idx++; evolved = true; }
-    pet.stage = STAGES[idx].key;
+    while (idx + 1 < ss.length && p.exp >= ss[idx + 1].req) { idx++; evolved = true; }
+    p.stage = ss[idx].key;
     return evolved;
   }
 
@@ -202,22 +251,22 @@
       // 長い文章ほど多くもらえる：文字量ボーナス（最大+25）
       exp += Math.min(25, Math.floor(chars / 25));
       // なかよしボーナス：仲良しなほど経験値が増える（最大+20）
-      exp += Math.min(20, Math.floor(pet.friendship / 2));
+      exp += Math.min(20, Math.floor(account.friendship / 2));
     }
     const gotTreasure = session.durationSec >= 180;
     if (gotTreasure) exp += 15;
 
-    const newStreak = updateStreak(pet.lastReadAt, pet.streakDays, now);
+    const newStreak = updateStreak(account.lastReadAt, account.streakDays, now);
     const gotItem = newStreak > 0 && newStreak % 5 === 0;
 
     const beforeLevel = pet.level;
     const beforeStage = pet.stage;
     pet.exp += exp;
-    pet.energy += food;
-    pet.streakDays = newStreak;
-    pet.lastReadAt = now.toISOString();
+    account.energy += food;
+    account.streakDays = newStreak;
+    account.lastReadAt = now.toISOString();
     pet.level = levelForExp(pet.exp);
-    if (gotItem) pet.evolutionItems += 1;
+    if (gotItem) account.evolutionItems += 1;
 
     // 進化
     const evolved = evolveCheck();
@@ -229,7 +278,7 @@
 
     const leveledUp = pet.level > beforeLevel;
     let msg;
-    if (evolved) msg = `${pet.name}が ${stageOf(pet.stage).label} に しんかしたよ！`;
+    if (evolved) msg = `${pet.name}が ${stageObj(pet).label} に しんかしたよ！`;
     else if (gotTreasure) msg = 'たくさん読めたね！宝箱が ひらいたよ';
     else if (leveledUp) msg = 'レベルアップ！ペットが よろこんでる';
     else if (session.durationSec >= 60) msg = '今日もしっかり読めたね！';
@@ -276,12 +325,14 @@
 
   // ---------------- ホーム ----------------
   function renderHome() {
-    const st = stageOf(pet.stage);
+    pet.level = levelForExp(pet.exp);
+    const st = stageObj(pet);
     $('home-pet-name').textContent = pet.name;
-    $('home-pet-sub').textContent = `${st.label}・レベル${pet.level}`;
-    $('home-pet').innerHTML = petArt(st);
+    $('home-pet-sub').textContent = `${speciesOf(pet).label}・${st.label}・レベル${pet.level}`;
+    $('home-pet').innerHTML = petArt(pet);
     // 経験値バー（現段階内の進捗）＋ つぎの しんかまでの案内
-    const next = STAGES[stageIndex(pet.stage) + 1];
+    const ss = stagesOf(pet);
+    const next = ss[stageIdx(pet) + 1];
     let prog = 1;
     if (next) { const s = st.req, e = next.req; prog = Math.max(0, Math.min(1, (pet.exp - s) / (e - s))); }
     $('home-exp-fill').style.width = (prog * 100) + '%';
@@ -290,12 +341,12 @@
       const verb = pet.stage === 'egg' ? 'うまれる' : 'しんかする';
       $('home-exp-label').textContent = `けいけんち ${pet.exp} ／ あと ${remain} で ${next.label}に ${verb}！`;
     } else {
-      $('home-exp-label').textContent = `けいけんち ${pet.exp} ／ さいだいまで そだったよ！`;
+      $('home-exp-label').textContent = `けいけんち ${pet.exp}（レベルは まだまだ あがるよ！）`;
     }
-    $('home-food').textContent = pet.energy;
-    $('home-streak').textContent = pet.streakDays + '日';
-    $('home-friend').textContent = pet.friendship;
-    const coin = $('home-coin'); if (coin) coin.textContent = pet.energy;
+    $('home-food').textContent = account.energy;
+    $('home-streak').textContent = account.streakDays + '日';
+    $('home-friend').textContent = account.friendship;
+    const coin = $('home-coin'); if (coin) coin.textContent = account.energy;
   }
 
   // ---------------- スキャン + OCR ----------------
@@ -834,7 +885,7 @@
   function startReading(text, single) {
     currentText = text; singleLineMode = single; lineIndex = 0;
     $('read-title').textContent = text.title;
-    $('read-pet').innerHTML = petArt(stageOf(pet.stage));
+    $('read-pet').innerHTML = petArt(pet);
     $('read-pet').className = 'pet small';
     $('read-cheer').hidden = true;
     $('vol-area').hidden = true;
@@ -1186,7 +1237,7 @@
 
   // ---------------- 結果 ----------------
   function showResult(r, durationSec) {
-    $('result-pet').innerHTML = petArt(stageOf(pet.stage));
+    $('result-pet').innerHTML = petArt(pet);
     $('result-pet').className = 'pet happy';
     $('result-msg').textContent = r.message;
     $('result-time').textContent = fmtTime(durationSec);
@@ -1195,7 +1246,7 @@
     const banners = $('result-banners'); banners.innerHTML = '';
     const addBanner = (text, cls) => { const d = document.createElement('div'); d.className = 'banner ' + (cls || ''); d.textContent = text; banners.appendChild(d); };
     if (r.leveledUp) addBanner('レベルアップ！');
-    if (r.evolved && r.newStage) addBanner(`${stageOf(r.newStage).label} に しんか！`);
+    if (r.evolved && r.newStage) addBanner(`${stageObj(pet).label} に しんか！`);
     if (r.gotTreasure) addBanner('たからばこが ひらいたよ！', 'treasure');
     if (r.gotItem) addBanner('5日れんぞく！しんかアイテム ゲット！');
     $('result-streak').textContent = `れんぞく ${r.newStreak}日め！`;
@@ -1336,6 +1387,57 @@
     try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
   }
 
+  // ---------------- なかま（コレクション） ----------------
+  function openCollection() {
+    const wrap = $('collection-list'); wrap.innerHTML = '';
+    pets.forEach((p) => {
+      p.level = levelForExp(p.exp);
+      const so = stageObj(p); const active = p.id === activeId;
+      const div = document.createElement('div');
+      div.className = 'list-card' + (active ? ' pet-active' : '');
+      div.innerHTML = `<div class="pet-thumb">${petArt(p)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="ttl">${esc(p.name)}</div>
+          <div class="prev">${speciesOf(p).label}・${so.label}・レベル${p.level}</div>
+        </div>
+        ${active ? '<span class="chip">いま いっしょ</span>' : '<span class="go-read">いれかえ</span>'}`;
+      if (!active) div.addEventListener('click', () => setActive(p.id));
+      wrap.appendChild(div);
+    });
+    show('collection');
+  }
+  function setActive(id) {
+    const found = pets.find((p) => p.id === id);
+    if (!found) return;
+    activeId = id; pet = found; saveAll();
+    toast(`${pet.name}と いっしょに そだてるよ！`);
+    openCollection();
+  }
+  function addPet(species) {
+    const names = { dragon: 'たまちゃん', rabbit: 'うさちゃん' };
+    pets.push({ id: uid(), species, name: names[species] || 'たまちゃん', stage: 'egg', exp: 0, level: 1 });
+    saveAll();
+    $('species-sheet').hidden = true;
+    openCollection();
+    toast('あたらしい たまごが きたよ！');
+  }
+  function openSpeciesPicker() {
+    const wrap = $('species-choices'); wrap.innerHTML = '';
+    Object.keys(SPECIES).forEach((key) => {
+      const sp = SPECIES[key];
+      const b = document.createElement('button');
+      b.className = 'stamp-choice';
+      b.innerHTML = `<img src="${sp.stages[0].img}?v=${ASSET_V}" alt="${sp.label}" style="height:54px;width:auto;display:block;margin:0 auto 4px"><span>${sp.label}</span>`;
+      b.addEventListener('click', () => addPet(key));
+      wrap.appendChild(b);
+    });
+    $('species-sheet').hidden = false;
+  }
+  const btnNewPet = $('btn-new-pet');
+  if (btnNewPet) btnNewPet.addEventListener('click', openSpeciesPicker);
+  const btnSpeciesCancel = $('btn-species-cancel');
+  if (btnSpeciesCancel) btnSpeciesCancel.addEventListener('click', () => { $('species-sheet').hidden = true; });
+
   // ---------------- 親画面 ----------------
   let parentAudioEl = null, playingId = null;
   function openParent() { renderSessions(); renderStamps(); switchTab('sessions'); show('parent'); }
@@ -1416,7 +1518,7 @@
     feedbacks.unshift({ id: uid(), sessionId: stampSessionId, stampType: stampSelected,
       comment: $('stamp-comment').value.trim(), createdAt: new Date().toISOString() });
     const s = sessions.find((x) => x.id === stampSessionId); if (s) s.parentApproved = true;
-    pet.friendship += 1;
+    account.friendship += 1;
     saveFeedbacks(); saveSessions(); savePet();
     sheet.hidden = true;
     toast('スタンプを おくったよ！なかよし度アップ');
@@ -1429,16 +1531,16 @@
   // ごはんを あげる：ごはんを消費して経験値に変える
   const btnFeed = $('btn-feed');
   if (btnFeed) btnFeed.addEventListener('click', () => {
-    if (pet.energy <= 0) { toast('ごはんが ないよ。おんどくで ためよう！'); return; }
-    const feed = Math.min(pet.energy, 10);
-    pet.energy -= feed;
+    if (account.energy <= 0) { toast('ごはんが ないよ。おんどくで ためよう！'); return; }
+    const feed = Math.min(account.energy, 10);
+    account.energy -= feed;
     pet.exp += feed;
     pet.level = levelForExp(pet.exp);
     const evolved = evolveCheck();
     savePet();
     renderHome();
     const rp = $('home-pet'); if (rp) { rp.classList.add('happy'); setTimeout(() => rp.classList.remove('happy'), 1200); }
-    toast(evolved ? `ごはん +${feed}！${stageOf(pet.stage).label}に しんかしたよ！` : `ごはんを あげた！けいけんち +${feed}`);
+    toast(evolved ? `ごはん +${feed}！${stageObj(pet).label}に しんかしたよ！` : `ごはんを あげた！けいけんち +${feed}`);
   });
   $('btn-read').addEventListener('click', () => openList(false));
   $('btn-read-line').addEventListener('click', () => openList(true));
@@ -1448,6 +1550,7 @@
   document.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => {
     const nav = b.dataset.nav;
     if (nav === 'home') show('home');
+    else if (nav === 'collection') openCollection();
     else if (nav === 'scan') { resetScan(); show('scan'); }
     else if (nav === 'settei') openSettings();
     else openParent(); // きろく → 親画面
@@ -1458,7 +1561,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.40';
+  const APP_VERSION = '1.0.41';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
