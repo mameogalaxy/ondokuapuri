@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,7 +10,7 @@ import '../widgets/big_button.dart';
 import 'reading_screen.dart';
 
 /// 3. OCR確認・編集画面。
-/// 読み取った文章を表示・編集、タイトル入力、保存、1文/1行ごとに分割。
+/// 読み取った文章を表示・編集します。OCR 完了時と編集時に自動保存します。
 class OcrEditScreen extends StatefulWidget {
   /// OCRで読み取った文章。
   final String recognizedText;
@@ -31,6 +33,7 @@ class OcrEditScreen extends StatefulWidget {
 class _OcrEditScreenState extends State<OcrEditScreen> {
   late final TextEditingController _titleController;
   late final TextEditingController _bodyController;
+  Timer? _autoSaveTimer;
 
   @override
   void initState() {
@@ -41,13 +44,31 @@ class _OcrEditScreenState extends State<OcrEditScreen> {
     _bodyController = TextEditingController(
       text: widget.existing?.body ?? widget.recognizedText,
     );
+    _titleController.addListener(_scheduleAutoSave);
+    _bodyController.addListener(_scheduleAutoSave);
   }
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
     _titleController.dispose();
     _bodyController.dispose();
     super.dispose();
+  }
+
+  /// 入力が落ち着いたら保存します。OCR の初期結果は ScanScreen で保存済みです。
+  void _scheduleAutoSave() {
+    if (widget.existing == null) return;
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(milliseconds: 350), _autoSave);
+  }
+
+  void _autoSave() {
+    if (!mounted || widget.existing == null) return;
+    final text = widget.existing!
+      ..title = _titleController.text.trim()
+      ..body = _bodyController.text;
+    unawaited(context.read<AppState>().updateText(text));
   }
 
   /// 1文（。!?）または1行ごとに改行を入れ直す。
@@ -64,7 +85,7 @@ class _OcrEditScreenState extends State<OcrEditScreen> {
     setState(() {});
   }
 
-  Future<void> _save({required bool thenRead}) async {
+  Future<void> _finish({required bool thenRead}) async {
     final app = context.read<AppState>();
     final body = _bodyController.text.trim();
     if (body.isEmpty) {
@@ -79,10 +100,10 @@ class _OcrEditScreenState extends State<OcrEditScreen> {
       final t = widget.existing!;
       t.title = _titleController.text.trim();
       t.body = body;
-      app.updateText(t);
+      await app.updateText(t);
       saved = t;
     } else {
-      saved = app.createText(
+      saved = await app.createText(
         title: _titleController.text.trim(),
         body: body,
         sourceImagePath: widget.sourceImagePath,
@@ -100,7 +121,7 @@ class _OcrEditScreenState extends State<OcrEditScreen> {
     } else {
       Navigator.popUntil(context, (route) => route.isFirst);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ほぞんしたよ！いつでも よめるよ')),
+        const SnackBar(content: Text('じどうで ほぞんしたよ！いつでも よめるよ')),
       );
     }
   }
@@ -166,10 +187,10 @@ class _OcrEditScreenState extends State<OcrEditScreen> {
                   children: [
                     Expanded(
                       child: BigButton(
-                        label: 'ほぞん',
-                        icon: Icons.save_alt,
+                        label: 'もどる',
+                        icon: Icons.arrow_back_rounded,
                         color: AppTheme.secondary,
-                        onPressed: () => _save(thenRead: false),
+                        onPressed: () => _finish(thenRead: false),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -177,7 +198,7 @@ class _OcrEditScreenState extends State<OcrEditScreen> {
                       child: BigButton(
                         label: 'よむ！',
                         icon: Icons.play_arrow_rounded,
-                        onPressed: () => _save(thenRead: true),
+                        onPressed: () => _finish(thenRead: true),
                       ),
                     ),
                   ],

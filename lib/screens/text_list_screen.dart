@@ -77,6 +77,12 @@ class TextListScreen extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                              IconButton(
+                                tooltip: 'ゴミ箱',
+                                icon: const Icon(Icons.delete_outline,
+                                    color: Colors.redAccent),
+                                onPressed: () => _confirmDelete(context, t.id),
+                              ),
                               const Icon(Icons.play_circle_fill,
                                   color: AppTheme.secondary, size: 36),
                             ],
@@ -89,5 +95,28 @@ class TextListScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, String id) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('この おはなしを すてる？'),
+        content: const Text('ゴミ箱を おすと、もとに もどせないよ。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('やめる'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('ゴミ箱に いれる'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete == true && context.mounted) {
+      await context.read<AppState>().deleteText(id);
+    }
   }
 }

@@ -50,14 +50,18 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------- ReadingText ----------------
-  ReadingText createText({
+  /// OCR完了時など、文章を端末内に確定保存します。
+  ///
+  /// 呼び出し元はこの Future を待つことで、画面を閉じても文章が消えない
+  /// 状態になってから次の画面へ進めます。
+  Future<ReadingText> createText({
     required String title,
     required String body,
     String? sourceImagePath,
     int? grade,
     String? subject,
     String? unitName,
-  }) {
+  }) async {
     final now = DateTime.now();
     final text = ReadingText(
       id: _uuid.v4(),
@@ -71,22 +75,24 @@ class AppState extends ChangeNotifier {
       unitName: unitName,
     );
     _texts.insert(0, text);
-    _storage.saveTexts(_texts);
+    await _storage.saveTexts(_texts);
     notifyListeners();
     return text;
   }
 
-  void updateText(ReadingText text) {
+  /// 編集内容を端末内へ保存します。OCR編集画面から入力のたびに呼ばれます。
+  Future<void> updateText(ReadingText text) async {
     text.updatedAt = DateTime.now();
     final i = _texts.indexWhere((t) => t.id == text.id);
     if (i >= 0) _texts[i] = text;
-    _storage.saveTexts(_texts);
+    await _storage.saveTexts(_texts);
     notifyListeners();
   }
 
-  void deleteText(String id) {
+  /// 文章を消す唯一の操作。UI ではゴミ箱の確認後だけ呼び出します。
+  Future<void> deleteText(String id) async {
     _texts.removeWhere((t) => t.id == id);
-    _storage.saveTexts(_texts);
+    await _storage.saveTexts(_texts);
     notifyListeners();
   }
 

@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 
 import '../services/ocr_service.dart';
+import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/big_button.dart';
 import 'ocr_edit_screen.dart';
@@ -80,13 +83,21 @@ class _ScanScreenState extends State<ScanScreen> {
     setState(() => _processing = true);
     try {
       final text = await _ocr.recognizeFromFile(path);
+      // camera が返すファイルはキャッシュ上にあり、OS が掃除することがあります。
+      // OCR 結果と紐付ける画像はアプリ専用領域へコピーして残します。
+      final savedImagePath = await _keepCapturedImage(path);
+      if (!mounted) return;
+      final saved = await context.read<AppState>().createText(
+            title: '',
+            body: text,
+            sourceImagePath: savedImagePath,
+          );
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => OcrEditScreen(
-            recognizedText: text,
-            sourceImagePath: path,
+            existing: saved,
           ),
         ),
       );
@@ -96,6 +107,21 @@ class _ScanScreenState extends State<ScanScreen> {
         _processing = false;
       });
     }
+  }
+
+  Future<String> _keepCapturedImage(String path) async {
+    final documents = await getApplicationDocumentsDirectory();
+    final imageDir =
+        Directory('${documents.path}${Platform.pathSeparator}scans');
+    await imageDir.create(recursive: true);
+
+    final source = File(path);
+    final extension =
+        path.contains('.') ? path.substring(path.lastIndexOf('.')) : '.jpg';
+    final fileName = 'scan_${DateTime.now().microsecondsSinceEpoch}$extension';
+    return (await source
+            .copy('${imageDir.path}${Platform.pathSeparator}$fileName'))
+        .path;
   }
 
   @override
