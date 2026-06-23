@@ -5,12 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="theme-color" content="#FF8A3D" />
+  <meta name="theme-color" content="#2EC5B6" />
   <title>よみたま</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="icon.png?v=30" />
+  <link rel="apple-touch-icon" href="icon.png?v=30" />
+  <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=30" />
+  <link rel="stylesheet" href="styles.css?v=42" />
   <!-- ブラウザで動く日本語OCR（処理は端末内。エンジンのみCDNから読み込み） -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- kuromoji は app.js から「起動後に非同期で」読み込みます（ブロックしないため） -->
 </head>
 <body>
   <div id="app">
@@ -19,7 +23,10 @@
     <section class="screen active" id="screen-home">
       <header class="topbar">
         <span class="logo">よみたま</span>
-        <button class="icon-btn" id="btn-parent" aria-label="おうちのひと">⚙️</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="coin"><span id="home-coin">0</span></span>
+          <button class="icon-btn" id="btn-parent" aria-label="おうちのひと">親</button>
+        </div>
       </header>
       <div class="scroll">
         <h1 class="pet-name" id="home-pet-name">たまちゃん</h1>
@@ -30,14 +37,23 @@
         <div class="expbar"><div class="expbar-fill" id="home-exp-fill"></div></div>
         <p class="exp-label" id="home-exp-label">けいけんち 0</p>
         <div class="stats">
-          <div class="stat"><div class="stat-emoji">🍚</div><div class="stat-val" id="home-food">0</div><div class="stat-label">ごはん</div></div>
-          <div class="stat"><div class="stat-emoji">🔥</div><div class="stat-val" id="home-streak">0日</div><div class="stat-label">れんぞく</div></div>
-          <div class="stat"><div class="stat-emoji">💖</div><div class="stat-val" id="home-friend">0</div><div class="stat-label">なかよし</div></div>
+          <div class="stat"><div class="stat-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M3.5 11c.8-3.6 4.4-6 8.5-6s7.7 2.4 8.5 6"/></svg></div><div class="stat-val" id="home-food">0</div><div class="stat-label">ごはん</div></div>
+          <div class="stat"><div class="stat-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3c.5 3 3 4.5 3 8a4 4 0 0 1-8 0c0-2 .8-3 1.5-3.8C9.7 8.8 11 7 13 3z"/></svg></div><div class="stat-val" id="home-streak">0日</div><div class="stat-label">れんぞく</div></div>
+          <div class="stat"><div class="stat-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.5-7 9-7 9z"/></svg></div><div class="stat-val" id="home-friend">0</div><div class="stat-label">なかよし</div></div>
         </div>
-        <button class="big-btn primary" id="btn-read">📖 きょうの おんどく</button>
-        <button class="big-btn secondary" id="btn-read-line">➖ 1ぎょうだけ よむ</button>
-        <button class="big-btn accent" id="btn-scan">📷 きょうかしょを とる</button>
+        <button class="feed-btn" id="btn-feed">ごはんを あげる（けいけんち＋）</button>
+        <button class="big-btn primary" id="btn-read">きょうの おんどく</button>
+        <button class="big-btn secondary" id="btn-read-line">1ぎょうだけ よむ</button>
+        <button class="big-btn accent" id="btn-scan">きょうかしょを とる</button>
+        <p class="app-version" id="app-version"></p>
       </div>
+      <nav class="bottomnav">
+        <button class="navitem active" data-nav="home"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7M6 10v9h12v-9"/></svg><span>ホーム</span></button>
+        <button class="navitem" data-nav="collection"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>なかま</span></button>
+        <button class="navitem" data-nav="scan"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6z"/></svg><span>きょうかしょ</span></button>
+        <button class="navitem" data-nav="stamp"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg><span>きろく</span></button>
+        <button class="navitem" data-nav="settei"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg><span>せってい</span></button>
+      </nav>
     </section>
 
     <!-- 2. スキャン -->
@@ -48,6 +64,14 @@
       </header>
       <div class="scan-body">
         <img id="scan-preview" alt="" hidden />
+        <div id="crop-overlay" hidden>
+          <div class="crop-hint">よむ ところを わくで かこってね</div>
+          <div id="crop-box">
+            <span class="ch" data-dir="nw"></span><span class="ch" data-dir="n"></span><span class="ch" data-dir="ne"></span>
+            <span class="ch" data-dir="w"></span><span class="ch" data-dir="e"></span>
+            <span class="ch" data-dir="sw"></span><span class="ch" data-dir="s"></span><span class="ch" data-dir="se"></span>
+          </div>
+        </div>
         <div id="scan-placeholder" class="scan-placeholder">
           <div class="scan-frame"></div>
           <p>わくの中に ぶんしょうを いれて<br>しゃしんを とってね</p>
@@ -60,10 +84,22 @@
       <div class="scan-actions">
         <!-- iPhoneのカメラ/写真を起動 -->
         <input type="file" accept="image/*" capture="environment" id="scan-input" hidden />
-        <button class="big-btn secondary" id="btn-pick" >📷 しゃしんを とる</button>
+        <input type="file" accept="image/*,application/pdf,text/plain,.txt,.md" id="import-input" multiple hidden />
+        <div class="row">
+          <button class="big-btn secondary half" id="btn-pick">しゃしんを とる</button>
+          <button class="big-btn accent half" id="btn-import">ファイルから</button>
+        </div>
+        <div class="writing-toggle" id="writing-toggle" hidden>
+          <button class="wt-btn active" data-dir="h">よこ書き</button>
+          <button class="wt-btn" data-dir="v">たて書き</button>
+        </div>
         <div class="row" id="scan-after" hidden>
-          <button class="big-btn secondary half" id="btn-retake">🔄 とりなおす</button>
-          <button class="big-btn primary half" id="btn-ocr">🔤 よみとる</button>
+          <button class="big-btn secondary half" id="btn-retake">とりなおす</button>
+          <button class="big-btn secondary half" id="btn-rotate">かいてん</button>
+        </div>
+        <div class="row" id="scan-after2" hidden>
+          <button class="big-btn accent half" id="btn-add-shot">＋ もう1まい</button>
+          <button class="big-btn primary half" id="btn-ocr">よみとる</button>
         </div>
       </div>
     </section>
@@ -79,12 +115,15 @@
         <input type="text" id="edit-title" class="text-input" placeholder="れい：ちいちゃんのかげおくり" />
         <div class="field-row">
           <label class="field-label">ぶんしょう</label>
-          <button class="link-btn" id="btn-split">↵ 1文ずつに わける</button>
+          <div style="display:flex;gap:6px">
+            <button class="link-btn" id="btn-add-page">＋ページ</button>
+            <button class="link-btn" id="btn-split">1文ずつ</button>
+          </div>
         </div>
         <textarea id="edit-body" class="text-area" placeholder="ここに よみとった ぶんしょうが でるよ。まちがいは なおせるよ。"></textarea>
         <div class="row">
-          <button class="big-btn secondary half" id="btn-save">💾 ほぞん</button>
-          <button class="big-btn primary half" id="btn-save-read">▶ よむ！</button>
+          <button class="big-btn secondary half" id="btn-save">もどる</button>
+          <button class="big-btn primary half" id="btn-save-read">よむ！</button>
         </div>
       </div>
     </section>
@@ -119,41 +158,75 @@
           <div class="volbar" id="volbar"></div>
           <p class="vol-text" id="vol-text">こえを きかせてね</p>
           <p class="timer" id="read-timer">00:00</p>
-          <button class="big-btn primary" id="btn-finish">✅ よみ おわった！</button>
+          <button class="big-btn primary" id="btn-finish">よみ おわった！</button>
         </div>
-        <button class="big-btn secondary" id="btn-rec-start">🎤 ろくおん スタート</button>
+        <button class="big-btn secondary" id="btn-rec-start">こえを よむ</button>
       </div>
     </section>
 
     <!-- 5. 結果 -->
     <section class="screen" id="screen-result">
       <div class="scroll result">
-        <h1 class="result-title">よく よめたね！🎉</h1>
+        <h1 class="result-title">よく よめたね！</h1>
         <div class="pet" id="result-pet">🥚</div>
         <div class="result-msg" id="result-msg"></div>
-        <div class="result-card"><span>⏱️ おんどく じかん</span><b id="result-time">00:00</b></div>
-        <div class="result-card"><span>⭐ けいけんち</span><b id="result-exp">+0</b></div>
-        <div class="result-card"><span>🍚 ごはん</span><b id="result-food">+0</b></div>
+        <div class="result-card"><span>おんどく じかん</span><b id="result-time">00:00</b></div>
+        <div class="result-card"><span>けいけんち</span><b id="result-exp">+0</b></div>
+        <div class="result-card"><span>ごはん</span><b id="result-food">+0</b></div>
         <div id="result-banners"></div>
         <p class="streak-line" id="result-streak"></p>
-        <button class="big-btn primary" id="btn-result-home">🏠 おうちに もどる</button>
+        <button class="big-btn primary" id="btn-result-home">おうちに もどる</button>
         <p class="soft-note">きょうは ここまででも OK。また こえを きかせてね！</p>
       </div>
     </section>
 
-    <!-- 親ゲート -->
-    <section class="screen" id="screen-gate">
+    <!-- なかま（コレクション） -->
+    <section class="screen" id="screen-collection">
       <header class="topbar">
         <button class="icon-btn" data-back="home">←</button>
-        <span class="logo">おうちのひと かくにん</span><span></span>
+        <span class="logo">なかま</span><span></span>
       </header>
-      <div class="scroll gate">
-        <div class="lock">🔒</div>
-        <p>保護者の方へ：下の計算をしてください</p>
-        <p class="gate-q" id="gate-q">3 × 4 = ?</p>
-        <input type="number" id="gate-input" class="text-input center" inputmode="numeric" />
-        <p class="error" id="gate-error" hidden>もういちど ためしてください</p>
-        <button class="big-btn primary" id="btn-gate-go">すすむ</button>
+      <div class="scroll">
+        <p class="set-help" style="text-align:center;margin-bottom:10px">タップで いっしょに そだてる子を いれかえ。そだてた子は おうちで まってるよ。</p>
+        <div id="collection-list"></div>
+        <button class="big-btn accent" id="btn-new-pet">あたらしい たまごを むかえる</button>
+      </div>
+    </section>
+
+    <!-- せってい（AI読み取り / Gemini API） -->
+    <section class="screen" id="screen-settings">
+      <header class="topbar">
+        <button class="icon-btn" data-back="home">←</button>
+        <span class="logo">せってい</span><span></span>
+      </header>
+      <div class="scroll form">
+        <p class="set-status" id="set-status">AI読み取り：オフ</p>
+        <p style="font-size:13px;color:#8B7A6B;font-weight:600;line-height:1.6">
+          Gemini の APIキーを入れると、文字の読み取り（OCR）が高精度になります。
+          無料のキーは Google AI Studio（aistudio.google.com）で取得できます。
+          ※画像はGoogleに送られます。キーはこの端末にだけ保存されます。
+        </p>
+        <label class="field-label">APIキー</label>
+        <input type="text" id="set-key" class="text-input" placeholder="AIza... など" autocomplete="off" />
+        <div class="row" style="margin:8px 0 4px">
+          <button class="big-btn secondary half" id="btn-key-copy">キーを コピー</button>
+          <button class="big-btn accent half" id="btn-key-clear">キーを けす</button>
+        </div>
+        <label class="field-label">モデル（メイン）</label>
+        <input type="text" id="set-model" class="text-input" placeholder="gemini-flash-latest" autocomplete="off" />
+        <p class="set-help">書類のOCRなど精度重視の処理に使用。既定の <b>gemini-flash-latest</b> は常に最新の無料Flashを指します（数字を追わなくてOK）。</p>
+        <label class="field-label">軽量モデル（コスパ用）</label>
+        <input type="text" id="set-model-lite" class="text-input" placeholder="gemini-flash-lite-latest" autocomplete="off" />
+        <p class="set-help">テキスト整理など、出力が少ない軽い処理に。</p>
+        <label class="field-label">エンドポイント（{model} はモデル名に置換）</label>
+        <input type="text" id="set-endpoint" class="text-input" placeholder="https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent" autocomplete="off" />
+        <div class="row" style="margin-top:14px">
+          <button class="big-btn secondary half" id="btn-set-reset">きほんに もどす</button>
+          <button class="big-btn primary half" id="btn-set-save">ほぞん</button>
+        </div>
+        <button class="big-btn accent" id="btn-qr-share" style="margin-top:4px">QRコードで かぞくに きょうゆう</button>
+        <button class="big-btn secondary" id="btn-qr-scan">QRを カメラで よみこむ</button>
+        <p class="set-help">家族のスマホの カメラで このQRを よみとると、APIキーが はいって すぐ使えます（入力ふよう）。ホーム画面アプリの場合は「QRを カメラで よみこむ」を使ってください。<b>QRにはキーが含まれます</b>ので、見せる相手に気をつけてください。</p>
       </div>
     </section>
 
@@ -186,6 +259,35 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js"></script>
+  <!-- なかまを むかえる（種類えらび） -->
+  <div class="sheet-backdrop" id="species-sheet" hidden>
+    <div class="sheet">
+      <h2>どの子を むかえる？</h2>
+      <div id="species-choices" class="stamp-choices"></div>
+      <button class="link-btn" id="btn-species-cancel">やめる</button>
+    </div>
+  </div>
+
+  <!-- QR読み取り（カメラ）モーダル -->
+  <div class="sheet-backdrop" id="qrscan-modal" hidden>
+    <div class="sheet">
+      <h2>QRを よみこむ</h2>
+      <video id="qrscan-video" playsinline muted style="width:100%;border-radius:16px;background:#000;aspect-ratio:1/1;object-fit:cover"></video>
+      <p class="set-help" style="text-align:center">家族の QRコードに カメラを むけてね</p>
+      <button class="big-btn secondary" id="btn-qrscan-close">とじる</button>
+    </div>
+  </div>
+
+  <!-- QR共有モーダル -->
+  <div class="sheet-backdrop" id="qr-modal" hidden>
+    <div class="sheet">
+      <h2>QRコードで きょうゆう</h2>
+      <p class="set-help" style="text-align:center">家族のスマホの カメラで よみとると、APIキーが はいるよ。<br>※キーが ふくまれます。みせる あいてに 気をつけてね。</p>
+      <div id="qr-box" style="display:flex;justify-content:center;padding:12px"></div>
+      <button class="big-btn primary" id="btn-qr-close">とじる</button>
+    </div>
+  </div>
+
+  <script src="app.js?v=43"></script>
 </body>
 </html>

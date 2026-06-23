@@ -6,16 +6,53 @@
 (() => {
   'use strict';
 
-  // ---------------- 進化段階 ----------------
-  const STAGES = [
-    { key: 'egg',     label: 'たまご',       emoji: '🥚', req: 0 },
-    { key: 'chick',   label: 'ひよこ',       emoji: '🐣', req: 50 },
-    { key: 'child',   label: 'こどもペット', emoji: '🐤', req: 150 },
-    { key: 'evolved', label: '進化ペット',   emoji: '🦅', req: 350 },
-    { key: 'rare',    label: 'レア進化',     emoji: '🐉', req: 700 },
-  ];
-  const stageIndex = (key) => STAGES.findIndex((s) => s.key === key);
-  const stageOf = (key) => STAGES[Math.max(0, stageIndex(key))];
+  // ---------------- キャラクター（種類ごとの進化段階） ----------------
+  const SPECIES = {
+    dragon: { label: 'ドラゴン', emoji: '🐉', stages: [
+      { key: 'egg',     label: 'たまご',   emoji: '🥚', img: 'pet-egg.png',     req: 0 },
+      { key: 'chick',   label: 'ひよこ',   emoji: '🐣', img: 'pet-chick.png',   req: 50 },
+      { key: 'child',   label: 'こども',   emoji: '🐤', img: 'pet-child.png',   req: 150 },
+      { key: 'evolved', label: 'しんか',   emoji: '🦅', img: 'pet-evolved.png', req: 350 },
+      { key: 'rare',    label: 'レアしんか', emoji: '🐲', img: 'pet-rare.png',  req: 700 },
+    ] },
+    rabbit: { label: 'うさぎ', emoji: '🐰', stages: [
+      { key: 'egg',     label: 'たまご', emoji: '🥚', img: 'rabbit-egg.png',     req: 0 },
+      { key: 'baby',    label: 'ベビー', emoji: '🐰', img: 'rabbit-baby.png',    req: 50 },
+      { key: 'child',   label: 'こども', emoji: '🐰', img: 'rabbit-child.png',   req: 150 },
+      { key: 'evolved', label: 'はかせ', emoji: '🐰', img: 'rabbit-evolved.png', req: 350 },
+    ] },
+    owl: { label: 'ふくろう', emoji: '🦉', stages: [
+      { key: 'egg',     label: 'たまご', emoji: '🥚', img: 'owl-egg.png',     req: 0 },
+      { key: 'baby',    label: 'ベビー', emoji: '🦉', img: 'owl-baby.png',    req: 50 },
+      { key: 'child',   label: 'こども', emoji: '🦉', img: 'owl-child.png',   req: 150 },
+      { key: 'evolved', label: 'はかせ', emoji: '🦉', img: 'owl-evolved.png', req: 350 },
+    ] },
+  };
+  const speciesOf = (p) => SPECIES[p && p.species] || SPECIES.dragon;
+  const stagesOf = (p) => speciesOf(p).stages;
+  function stageIdx(p) { const ss = stagesOf(p); const i = ss.findIndex((s) => s.key === p.stage); return i < 0 ? 0 : i; }
+  function stageObj(p) { return stagesOf(p)[stageIdx(p)]; }
+  // ペットの絵（画像が無ければ絵文字にフォールバック）。?v= はキャッシュ更新用
+  const ASSET_V = '40';
+  function petArt(p) {
+    const st = stageObj(p);
+    return `<img class="pet-art" src="${st.img}?v=${ASSET_V}" alt="${st.label}" onerror="this.parentNode.textContent='${st.emoji}'">`;
+  }
+
+  // 自作ピクトグラム（絵文字を使わず、線画アイコンで表現）
+  const SVG = {
+    trash: '<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>',
+    play: '<path d="M8 5l12 7-12 7z" fill="currentColor" stroke="none"/>',
+    home: '<path d="M4 11l8-7 8 7M6 10v9h12v-9"/>',
+    book: '<path d="M4 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6z"/>',
+    list: '<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',
+    gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
+    bowl: '<path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M3.5 11c.8-3.6 4.4-6 8.5-6s7.7 2.4 8.5 6"/>',
+    flame: '<path d="M13 3c.5 3 3 4.5 3 8a4 4 0 0 1-8 0c0-2 .8-3 1.5-3.8C9.7 8.8 11 7 13 3z"/>',
+    heart: '<path d="M12 20s-7-4.5-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.5-7 9-7 9z"/>',
+  };
+  const icon = (name, cls = 'ic') =>
+    `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${SVG[name] || ''}</svg>`;
 
   const STAMPS = [
     { key: 'great', emoji: '⭐', label: 'すごい！' },
@@ -66,19 +103,102 @@
 
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-  // ---------------- 状態 ----------------
-  let pet = Store.load('pet', null) || {
-    id: 'pet_main', name: 'たまちゃん', stage: 'egg', level: 1, exp: 0,
-    friendship: 0, energy: 0, lastReadAt: null, streakDays: 0, evolutionItems: 0,
-  };
+  // ---------------- 状態（複数キャラ対応） ----------------
+  // account = 共有ステータス（ごはん・れんぞく・なかよし等）
+  // pets    = 育てているキャラの一覧（それぞれ exp/stage/species/name）
+  // activeId= いま いっしょに育てているキャラのID。pet はその参照。
+  let account, pets, activeId, pet;
+  (function loadPets() {
+    const data = Store.load('petsData', null);
+    if (data && data.pets && data.pets.length) {
+      account = data.account || {};
+      pets = data.pets;
+      activeId = data.activeId || pets[0].id;
+    } else {
+      // 旧データ（単一pet）からの移行 or 新規
+      const old = Store.load('pet', null);
+      account = {
+        energy: old ? (old.energy || 0) : 0,
+        streakDays: old ? (old.streakDays || 0) : 0,
+        friendship: old ? (old.friendship || 0) : 0,
+        lastReadAt: old ? (old.lastReadAt || null) : null,
+        evolutionItems: old ? (old.evolutionItems || 0) : 0,
+      };
+      pets = [{
+        id: (old && old.id) || uid(),
+        species: 'dragon',
+        name: (old && old.name) || 'たまちゃん',
+        stage: (old && old.stage) || 'egg',
+        exp: (old && old.exp) || 0,
+        level: (old && old.level) || 1,
+      }];
+      activeId = pets[0].id;
+    }
+    if (account.energy == null) account.energy = 0;
+    if (account.friendship == null) account.friendship = 0;
+    if (account.streakDays == null) account.streakDays = 0;
+    pet = pets.find((p) => p.id === activeId) || pets[0];
+    activeId = pet.id;
+  })();
+
   let texts = Store.load('texts', []);
   let sessions = Store.load('sessions', []);
   let feedbacks = Store.load('feedbacks', []);
 
-  const savePet = () => Store.save('pet', pet);
+  const saveAll = () => Store.save('petsData', { account, pets, activeId });
+  const savePet = saveAll; // 互換
   const saveTexts = () => Store.save('texts', texts);
   const saveSessions = () => Store.save('sessions', sessions);
   const saveFeedbacks = () => Store.save('feedbacks', feedbacks);
+
+  // ---------------- 設定（Gemini API） ----------------
+  // 将来 Google 側でモデル名やエンドポイントが変わっても、設定画面で変更すれば
+  // コード修正なしで対応できるようにしている。
+  let config = Store.load('config', {});
+  const saveConfig = () => Store.save('config', config);
+  const GEMINI_DEFAULT = {
+    model: 'gemini-flash-latest',          // 常に最新の無料Flash（数字を追わなくてよい）
+    modelLite: 'gemini-flash-lite-latest', // 軽量・コスパ用
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
+  };
+  const geminiCfg = () => ({
+    key: (config.geminiKey || '').trim(),
+    model: (config.geminiModel || GEMINI_DEFAULT.model).trim(),
+    modelLite: (config.geminiModelLite || GEMINI_DEFAULT.modelLite).trim(),
+    endpoint: (config.geminiEndpoint || GEMINI_DEFAULT.endpoint).trim(),
+  });
+
+  // Gemini で画像から日本語テキストを抽出（高精度・縦書き対応）
+  async function geminiOcr(dataUrl) {
+    const c = geminiCfg();
+    if (!c.key) throw new Error('APIキーが未設定');
+    const base64 = (dataUrl.split(',')[1]) || '';
+    const mime = (dataUrl.match(/^data:(.*?);/) || [])[1] || 'image/png';
+    const url = c.endpoint.replace('{model}', encodeURIComponent(c.model)) + '?key=' + encodeURIComponent(c.key);
+    const body = {
+      contents: [{
+        parts: [
+          { text: '画像に写っている日本語の文章だけを、書かれている順序どおり（縦書きは右の行から、上から下へ）にそのまま文字に起こしてください。説明・注釈・ふりがなは付けず、本文テキストのみを出力してください。' },
+          { inline_data: { mime_type: mime, data: base64 } },
+        ],
+      }],
+      generationConfig: { temperature: 0 },
+    };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json()).error?.message || ''; } catch (_) {}
+      throw new Error('Gemini ' + res.status + (detail ? ': ' + detail : ''));
+    }
+    const json = await res.json();
+    const cand = (json.candidates || [])[0] || {};
+    const parts = (cand.content || {}).parts || [];
+    return parts.map((p) => p.text || '').join('').trim();
+  }
 
   // ---------------- 文章ユーティリティ ----------------
   const linesOf = (body) => body.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
@@ -94,6 +214,16 @@
 
   // ---------------- 育成ロジック ----------------
   const levelForExp = (exp) => Math.floor(exp / 50) + 1;
+  // 経験値に応じて進化段階を更新。進化したら true。
+  function evolveCheck(p) {
+    p = p || pet;
+    const ss = stagesOf(p);
+    let idx = stageIdx(p);
+    let evolved = false;
+    while (idx + 1 < ss.length && p.exp >= ss[idx + 1].req) { idx++; evolved = true; }
+    p.stage = ss[idx].key;
+    return evolved;
+  }
 
   function isExtremelyShort(durationSec, chars) {
     if (chars <= 0) return false;
@@ -119,28 +249,33 @@
     const now = new Date();
     const lc = linesOf(text.body).length;
     const food = lc > 0 ? lc : 1;
+    const chars = charCount(text.body);
     let exp = baseExp(session.durationSec);
-    if (isExtremelyShort(session.durationSec, charCount(text.body))) exp = 2;
+    if (isExtremelyShort(session.durationSec, chars)) {
+      exp = 2; // 極端に短い（読まずにスキップ）ときはボーナスなし
+    } else {
+      // 長い文章ほど多くもらえる：文字量ボーナス（最大+25）
+      exp += Math.min(25, Math.floor(chars / 25));
+      // なかよしボーナス：仲良しなほど経験値が増える（最大+20）
+      exp += Math.min(20, Math.floor(account.friendship / 2));
+    }
     const gotTreasure = session.durationSec >= 180;
     if (gotTreasure) exp += 15;
 
-    const newStreak = updateStreak(pet.lastReadAt, pet.streakDays, now);
+    const newStreak = updateStreak(account.lastReadAt, account.streakDays, now);
     const gotItem = newStreak > 0 && newStreak % 5 === 0;
 
     const beforeLevel = pet.level;
     const beforeStage = pet.stage;
     pet.exp += exp;
-    pet.energy += food;
-    pet.streakDays = newStreak;
-    pet.lastReadAt = now.toISOString();
+    account.energy += food;
+    account.streakDays = newStreak;
+    account.lastReadAt = now.toISOString();
     pet.level = levelForExp(pet.exp);
-    if (gotItem) pet.evolutionItems += 1;
+    if (gotItem) account.evolutionItems += 1;
 
     // 進化
-    let evolved = false;
-    let idx = stageIndex(pet.stage);
-    while (idx + 1 < STAGES.length && pet.exp >= STAGES[idx + 1].req) { idx++; evolved = true; }
-    pet.stage = STAGES[idx].key;
+    const evolved = evolveCheck();
 
     session.earnedExp = exp;
     session.isCompleted = true;
@@ -149,9 +284,9 @@
 
     const leveledUp = pet.level > beforeLevel;
     let msg;
-    if (evolved) msg = `${pet.name}が ${stageOf(pet.stage).label} に しんかしたよ！`;
-    else if (gotTreasure) msg = 'たくさん読めたね！宝箱が ひらいたよ✨';
-    else if (leveledUp) msg = 'レベルアップ！ペットがよろこんでる🎉';
+    if (evolved) msg = `${pet.name}が ${stageObj(pet).label} に しんかしたよ！`;
+    else if (gotTreasure) msg = 'たくさん読めたね！宝箱が ひらいたよ';
+    else if (leveledUp) msg = 'レベルアップ！ペットが よろこんでる';
     else if (session.durationSec >= 60) msg = '今日もしっかり読めたね！';
     else if (session.durationSec >= 30) msg = 'いい声が聞こえたよ！';
     else msg = '声が聞こえたよ。今日も読めたね！';
@@ -175,112 +310,578 @@
     const t = $('toast'); t.textContent = text; t.hidden = false;
     clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 2200);
   }
+  // 万一の例外を画面に出して原因を分かるようにする（不具合調査用）
+  let _errShown = false;
+  window.addEventListener('error', (e) => {
+    if (_errShown) return; _errShown = true;
+    try { toast('エラー: ' + (e.message || '')); } catch (_) {}
+    setTimeout(() => { _errShown = false; }, 3000);
+  });
+
+  // 押した瞬間に見た目で分かるフィードバック（一瞬のタップでも残るよう少し保持）
+  document.addEventListener('pointerdown', (e) => {
+    const t = e.target.closest('button, .navitem, .wt-btn, .stamp-choice, .list-card, .go-read, .coin');
+    if (!t || t.classList.contains('ch')) return;
+    t.classList.add('is-pressed');
+    const clear = () => t.classList.remove('is-pressed');
+    setTimeout(clear, 220);
+    t.addEventListener('pointerup', clear, { once: true });
+    t.addEventListener('pointercancel', clear, { once: true });
+  }, true);
 
   // ---------------- ホーム ----------------
   function renderHome() {
-    const st = stageOf(pet.stage);
+    pet.level = levelForExp(pet.exp);
+    const st = stageObj(pet);
     $('home-pet-name').textContent = pet.name;
-    $('home-pet-sub').textContent = `${st.label}・レベル${pet.level}`;
-    $('home-pet').textContent = st.emoji;
-    // 経験値バー（現段階内の進捗）
-    const next = STAGES[stageIndex(pet.stage) + 1];
+    $('home-pet-sub').textContent = `${speciesOf(pet).label}・${st.label}・レベル${pet.level}`;
+    $('home-pet').innerHTML = petArt(pet);
+    // 経験値バー（現段階内の進捗）＋ つぎの しんかまでの案内
+    const ss = stagesOf(pet);
+    const next = ss[stageIdx(pet) + 1];
     let prog = 1;
     if (next) { const s = st.req, e = next.req; prog = Math.max(0, Math.min(1, (pet.exp - s) / (e - s))); }
     $('home-exp-fill').style.width = (prog * 100) + '%';
-    $('home-exp-label').textContent = `けいけんち ${pet.exp}`;
-    $('home-food').textContent = pet.energy;
-    $('home-streak').textContent = pet.streakDays + '日';
-    $('home-friend').textContent = pet.friendship;
+    if (next) {
+      const remain = Math.max(0, next.req - pet.exp);
+      const verb = pet.stage === 'egg' ? 'うまれる' : 'しんかする';
+      $('home-exp-label').textContent = `けいけんち ${pet.exp} ／ あと ${remain} で ${next.label}に ${verb}！`;
+    } else {
+      $('home-exp-label').textContent = `けいけんち ${pet.exp}（レベルは まだまだ あがるよ！）`;
+    }
+    $('home-food').textContent = account.energy;
+    $('home-streak').textContent = account.streakDays + '日';
+    $('home-friend').textContent = account.friendship;
+    const coin = $('home-coin'); if (coin) coin.textContent = account.energy;
   }
 
   // ---------------- スキャン + OCR ----------------
   let capturedDataUrl = null;
+  let ocrVertical = false; // 縦書きモード（教科書は縦書きが多い）
+  let shotQueue = [];      // 連続撮影でためた画像（dataURL）
   function resetScan() {
     capturedDataUrl = null;
+    shotQueue = [];
     $('scan-preview').hidden = true;
     $('scan-placeholder').hidden = false;
     $('scan-after').hidden = true;
+    $('scan-after2').hidden = true;
+    $('writing-toggle').hidden = true;
     $('scan-progress').hidden = true;
+    $('crop-overlay').hidden = true;
+    $('btn-ocr').textContent = 'よみとる';
     $('scan-input').value = '';
+  }
+
+  // 撮影/選択した直後の表示（プレビュー＋操作ボタン＋トリミング枠）
+  function showAfterCapture() {
+    $('scan-preview').src = capturedDataUrl;
+    $('scan-preview').hidden = false;
+    $('scan-placeholder').hidden = true;
+    $('scan-after').hidden = false;
+    $('scan-after2').hidden = false;
+    $('writing-toggle').hidden = false;
+    $('btn-ocr').textContent = shotQueue.length ? `よみとる（${shotQueue.length + 1}まい）` : 'よみとる';
+    showCrop();
+  }
+
+  // 画像を deg 度 回転した dataURL を返す（JPEGで軽量に）
+  function rotateDataUrl(dataUrl, deg) {
+    return new Promise((res) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        const rad = deg * Math.PI / 180;
+        if (deg % 180 === 0) { c.width = img.width; c.height = img.height; }
+        else { c.width = img.height; c.height = img.width; }
+        const ctx = c.getContext('2d');
+        ctx.translate(c.width / 2, c.height / 2);
+        ctx.rotate(rad);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        res(c.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = () => res(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
+  // 大きすぎる写真を縮小してJPEG化（回転やOCRを軽くする）。最大辺 max px。
+  function shrinkDataUrl(dataUrl, max) {
+    return new Promise((res) => {
+      const img = new Image();
+      img.onload = () => {
+        const m = Math.max(img.width, img.height);
+        if (m <= max) { res(dataUrl); return; }
+        const s = max / m;
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = () => res(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
+  // プレビュー画像にトリミング枠を表示し、画像の上に初期配置する
+  function showCrop() {
+    const img = $('scan-preview');
+    const place = () => {
+      if (!img.naturalWidth) return;
+      const body = img.closest('.scan-body');
+      const ir = img.getBoundingClientRect();
+      const pr = body.getBoundingClientRect();
+      const left = ir.left - pr.left, top = ir.top - pr.top;
+      const box = $('crop-box');
+      box.style.left = (left + ir.width * 0.08) + 'px';
+      box.style.top = (top + ir.height * 0.08) + 'px';
+      box.style.width = (ir.width * 0.84) + 'px';
+      box.style.height = (ir.height * 0.84) + 'px';
+      $('crop-overlay').hidden = false;
+    };
+    if (img.complete && img.naturalWidth) requestAnimationFrame(place);
+    else img.onload = () => requestAnimationFrame(place);
+  }
+
+  // トリミング枠のドラッグ：本体で移動、8方向ハンドルでリサイズ
+  (function initCropDrag() {
+    const box = $('crop-box');
+    let mode = null, sx = 0, sy = 0, ox = 0, oy = 0, ow = 0, oh = 0;
+    const bodyRect = () => $('scan-preview').closest('.scan-body').getBoundingClientRect();
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
+    function down(e, m) {
+      e.preventDefault(); e.stopPropagation();
+      mode = m;
+      const p = e.touches ? e.touches[0] : e;
+      sx = p.clientX; sy = p.clientY;
+      ox = box.offsetLeft; oy = box.offsetTop; ow = box.offsetWidth; oh = box.offsetHeight;
+      window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+    }
+    function move(e) {
+      if (!mode) return;
+      const br = bodyRect();
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      if (mode === 'move') {
+        box.style.left = clamp(ox + dx, 0, br.width - ow) + 'px';
+        box.style.top = clamp(oy + dy, 0, br.height - oh) + 'px';
+        return;
+      }
+      const MIN = 50;
+      let L = ox, T = oy, W = ow, H = oh;
+      if (mode.includes('e')) W = ow + dx;
+      if (mode.includes('s')) H = oh + dy;
+      if (mode.includes('w')) { L = ox + dx; W = ow - dx; }
+      if (mode.includes('n')) { T = oy + dy; H = oh - dy; }
+      if (W < MIN) { if (mode.includes('w')) L = ox + ow - MIN; W = MIN; }
+      if (H < MIN) { if (mode.includes('n')) T = oy + oh - MIN; H = MIN; }
+      if (L < 0) { W += L; L = 0; }
+      if (T < 0) { H += T; T = 0; }
+      if (L + W > br.width) W = br.width - L;
+      if (T + H > br.height) H = br.height - T;
+      box.style.left = L + 'px'; box.style.top = T + 'px'; box.style.width = W + 'px'; box.style.height = H + 'px';
+    }
+    function up() { mode = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); }
+    box.addEventListener('pointerdown', (e) => down(e, 'move'));
+    box.querySelectorAll('.ch').forEach((h) => h.addEventListener('pointerdown', (e) => down(e, h.dataset.dir)));
+  })();
+
+  // トリミング枠の範囲を元画像の座標で切り出してdataURLを返す
+  function getCroppedDataUrl() {
+    const img = $('scan-preview');
+    if ($('crop-overlay').hidden || !img.naturalWidth) return capturedDataUrl;
+    const ir = img.getBoundingClientRect();
+    const br = $('crop-box').getBoundingClientRect();
+    const scaleX = img.naturalWidth / ir.width, scaleY = img.naturalHeight / ir.height;
+    let sx = (br.left - ir.left) * scaleX, sy = (br.top - ir.top) * scaleY;
+    let sw = br.width * scaleX, sh = br.height * scaleY;
+    sx = Math.max(0, sx); sy = Math.max(0, sy);
+    sw = Math.min(sw, img.naturalWidth - sx); sh = Math.min(sh, img.naturalHeight - sy);
+    if (sw < 10 || sh < 10) return capturedDataUrl;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(sw); canvas.height = Math.round(sh);
+    canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
   }
   $('btn-pick').addEventListener('click', () => $('scan-input').click());
   $('btn-retake').addEventListener('click', resetScan);
+  // 縦書き／横書きの切り替え
+  document.querySelectorAll('#writing-toggle .wt-btn').forEach((b) => {
+    b.addEventListener('click', () => {
+      ocrVertical = b.dataset.dir === 'v';
+      document.querySelectorAll('#writing-toggle .wt-btn').forEach((x) => x.classList.toggle('active', x === b));
+    });
+  });
   $('scan-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
+    e.target.value = '';
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      capturedDataUrl = reader.result;
-      $('scan-preview').src = capturedDataUrl;
-      $('scan-preview').hidden = false;
-      $('scan-placeholder').hidden = true;
-      $('scan-after').hidden = false;
-    };
+    reader.onload = async () => { capturedDataUrl = await shrinkDataUrl(reader.result, 1800); showAfterCapture(); };
     reader.readAsDataURL(file);
   });
-  $('btn-ocr').addEventListener('click', runOcr);
-  async function runOcr() {
+  // かいてん：撮った写真を90°回す（読みたい向きに）
+  $('btn-rotate').addEventListener('click', async () => {
     if (!capturedDataUrl) return;
+    capturedDataUrl = await rotateDataUrl(capturedDataUrl, 90);
+    $('scan-preview').src = capturedDataUrl;
+    showCrop();
+  });
+  // ＋もう1まい：今の写真をためて、続けて次を撮る
+  $('btn-add-shot').addEventListener('click', () => {
+    if (!capturedDataUrl) return;
+    shotQueue.push(getCroppedDataUrl());
+    capturedDataUrl = null;
+    $('scan-preview').hidden = true;
+    $('scan-placeholder').hidden = false;
+    $('scan-after').hidden = true; $('scan-after2').hidden = true; $('writing-toggle').hidden = true;
+    $('crop-overlay').hidden = true;
+    toast(`${shotQueue.length}まい ためたよ。つぎを とってね`);
+    $('scan-input').click(); // 続けてカメラを開く
+  });
+  // 画像・PDF・テキストファイルから取り込む（カメラ以外）
+  $('btn-import').addEventListener('click', () => $('import-input').click());
+  $('import-input').addEventListener('change', (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    if (files.length === 1) handleImportFile(files[0]); // 1枚はトリミングできる流れ
+    else handleMultipleFiles(files);                    // 複数はまとめて読み取り
+  });
+
+  // 複数ファイル（画像/PDF/テキスト）を順に読み取り、1つの文章に結合
+  async function handleMultipleFiles(files) {
+    show('scan');
+    $('scan-placeholder').hidden = true;
     $('scan-progress').hidden = false;
-    const txt = $('scan-progress-text');
+    const out = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const type = f.type || ''; const name = (f.name || '').toLowerCase();
+      $('scan-progress-text').textContent = `よみとっているよ… (${i + 1}/${files.length})`;
+      try {
+        if (type.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md')) {
+          out.push(cleanupOcr(await f.text()));
+        } else if (type === 'application/pdf' || name.endsWith('.pdf')) {
+          out.push(await pdfToText(f));
+        } else if (type.startsWith('image/')) {
+          out.push(await ocrImageDataUrl(await fileToDataUrl(f)));
+        }
+      } catch (_) { /* この1枚は飛ばす */ }
+    }
+    deliverOcrText(out.filter(Boolean).join('\n\n'));
+  }
+  const fileToDataUrl = (f) => new Promise((res, rej) => {
+    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f);
+  });
+
+  function loadScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.async = true;
+      s.onload = res; s.onerror = () => rej(new Error('load fail'));
+      document.head.appendChild(s);
+    });
+  }
+  let _pdfjs = null;
+  function ensurePdfJs() {
+    if (window.pdfjsLib) return Promise.resolve();
+    if (_pdfjs) return _pdfjs;
+    _pdfjs = loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js')
+      .then(() => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'; });
+    return _pdfjs;
+  }
+
+  async function handleImportFile(file) {
+    const type = file.type || '';
+    const name = (file.name || '').toLowerCase();
     try {
-      const worker = await Tesseract.createWorker('jpn', 1, {
-        logger: (m) => {
-          if (m.status === 'recognizing text') txt.textContent = `もじを よみとっているよ… ${Math.round(m.progress * 100)}%`;
-        },
-      });
-      const { data } = await worker.recognize(capturedDataUrl);
-      await worker.terminate();
-      const cleaned = cleanupOcr(data.text || '');
-      openEdit({ body: cleaned });
+      if (type.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md')) {
+        deliverOcrText(cleanupOcr(await file.text()));
+        return;
+      }
+      if (type === 'application/pdf' || name.endsWith('.pdf')) {
+        show('scan'); $('scan-placeholder').hidden = true; $('scan-progress').hidden = false;
+        $('scan-progress-text').textContent = 'PDFを よみとっているよ…';
+        const t = await pdfToText(file);
+        deliverOcrText(t);
+        return;
+      }
+      if (type.startsWith('image/')) {
+        // 画像はカメラと同じ「プレビュー→よみとる」の流れに乗せる
+        const reader = new FileReader();
+        reader.onload = async () => { capturedDataUrl = await shrinkDataUrl(reader.result, 1800); show('scan'); showAfterCapture(); };
+        reader.readAsDataURL(file);
+        return;
+      }
+      toast('このファイルは よみとれないよ');
+    } catch (err) {
+      toast('ファイルを ひらけませんでした');
+    }
+  }
+
+  // PDF→テキスト（文字つきPDFは抽出、スキャンPDFは各ページを画像OCR）。最大10ページ。
+  async function pdfToText(file) {
+    try {
+      await ensurePdfJs();
+      const buf = await file.arrayBuffer();
+      const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+      const maxPages = Math.min(pdf.numPages, 10);
+      let text = '';
+      for (let p = 1; p <= maxPages; p++) {
+        const page = await pdf.getPage(p);
+        const tc = await page.getTextContent();
+        text += tc.items.map((i) => i.str).join('') + '\n';
+      }
+      text = text.trim();
+      if (text.replace(/\s/g, '').length >= 4) return cleanupOcr(text);
+      // 文字なし（スキャンPDF）→ 各ページを画像化してOCR
+      const out = [];
+      for (let p = 1; p <= maxPages; p++) {
+        const page = await pdf.getPage(p);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        out.push(await ocrImageDataUrl(canvas.toDataURL('image/png')));
+      }
+      return out.filter(Boolean).join('\n\n');
+    } catch (e) {
+      toast('PDFを よみとれませんでした');
+      return '';
+    }
+  }
+
+  $('btn-ocr').addEventListener('click', runOcr);
+
+  // 指定モデルでOCR実行（langPathを変えて高精度/標準を切替）
+  async function recognizeWith(processed, lang, langPath, txt) {
+    const opts = {
+      logger: (m) => {
+        if (m.status === 'recognizing text') txt.textContent = `もじを よみとっているよ… ${Math.round(m.progress * 100)}%`;
+        else if (m.status && m.status.indexOf('loading') === 0) txt.textContent = 'じゅんびちゅう…（はじめは すこし まつよ）';
+      },
+    };
+    if (langPath) opts.langPath = langPath;
+    const worker = await Tesseract.createWorker(lang, 1, opts); // oem=1: LSTM
+    await worker.setParameters({
+      tessedit_pageseg_mode: ocrVertical ? '5' : '3', // 縦書き=5 / 横書き自動=3
+      preserve_interword_spaces: '0',
+    });
+    const { data } = await worker.recognize(processed);
+    await worker.terminate();
+    return data.text || '';
+  }
+
+  // 1枚の画像(dataURL)からテキストを得る（Gemini優先→Tesseractフォールバック）
+  async function ocrImageDataUrl(dataUrl) {
+    const txt = $('scan-progress-text');
+    const lang = ocrVertical ? 'jpn_vert' : 'jpn';
+    if (geminiCfg().key) {
+      try {
+        txt.textContent = 'AIで よみとっているよ…';
+        const aiText = cleanupOcr(await geminiOcr(dataUrl));
+        if (aiText.replace(/\s/g, '').length >= 1) return aiText;
+      } catch (eAI) { /* 下にフォールバック */ }
+    }
+    const processed = await preprocessImage(dataUrl);
+    try {
+      return cleanupOcr(await recognizeWith(processed, lang, 'https://tessdata.projectnaptha.com/4.0.0_best', txt));
+    } catch (e1) {
+      return cleanupOcr(await recognizeWith(processed, lang, null, txt));
+    }
+  }
+
+  // OCR結果を編集画面へ。ページ追加モードなら既存本文に継ぎ足す。
+  let ocrAppend = false;
+  function deliverOcrText(text) {
+    if (ocrAppend) {
+      const cur = $('edit-body').value.trim();
+      $('edit-body').value = (cur ? cur + '\n\n' : '') + (text || '');
+      ocrAppend = false;
+      flushEditingText();
+      $('scan-progress').hidden = true;
+      show('edit');
+    } else {
+      // OCRが終わった時点で、編集前でも端末内に保存する。
+      // これにより画面を閉じたりアプリを放置したりしても結果は消えない。
+      openEdit({ existing: createText(text || '') });
+    }
+  }
+
+  async function runOcr() {
+    // ためた写真（連続撮影）＋いまの写真 をまとめて読み取り
+    const shots = shotQueue.slice();
+    if (capturedDataUrl) shots.push(getCroppedDataUrl());
+    if (!shots.length) return;
+    $('crop-overlay').hidden = true;
+    $('scan-progress').hidden = false;
+    try {
+      const parts = [];
+      for (let i = 0; i < shots.length; i++) {
+        if (shots.length > 1) $('scan-progress-text').textContent = `よみとっているよ… (${i + 1}/${shots.length})`;
+        parts.push(await ocrImageDataUrl(shots[i]));
+      }
+      shotQueue = [];
+      deliverOcrText(parts.filter(Boolean).join('\n\n'));
     } catch (err) {
       $('scan-progress').hidden = true;
       toast('よみとりに しっぱい。もう一度ためしてね');
-      // 失敗しても手入力で続けられるよう編集画面へ
-      openEdit({ body: '' });
+      deliverOcrText('');
     }
   }
+
+  // 画像前処理：大きすぎる画像を適度に縮小し、グレースケール＋コントラスト強調
+  function preprocessImage(dataUrl) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxW = 1600;
+          const scale = img.width > maxW ? maxW / img.width : 1;
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const imgData = ctx.getImageData(0, 0, w, h);
+          const d = imgData.data;
+          // 1) グレースケール化＋ヒストグラム作成
+          const gray = new Uint8Array(d.length / 4);
+          const hist = new Array(256).fill(0);
+          for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+            const g = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
+            gray[p] = g; hist[g]++;
+          }
+          // 2) Otsu法で最適なしきい値を求める（文字を黒、背景を白にくっきり）
+          const total = gray.length;
+          let sum = 0; for (let k = 0; k < 256; k++) sum += k * hist[k];
+          let sumB = 0, wB = 0, maxVar = -1, thr = 127;
+          for (let k = 0; k < 256; k++) {
+            wB += hist[k]; if (wB === 0) continue;
+            const wF = total - wB; if (wF === 0) break;
+            sumB += k * hist[k];
+            const mB = sumB / wB, mF = (sum - sumB) / wF;
+            const between = wB * wF * (mB - mF) * (mB - mF);
+            if (between > maxVar) { maxVar = between; thr = k; }
+          }
+          // 3) 2値化（背景が暗い場合に備え、黒文字白背景になるよう調整）
+          let blackCount = 0;
+          for (let p = 0; p < total; p++) if (gray[p] < thr) blackCount++;
+          const invert = blackCount > total * 0.5; // 黒が多すぎ＝背景が暗い→反転
+          for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+            let on = gray[p] < thr; // 暗い＝文字
+            if (invert) on = !on;
+            const v = on ? 0 : 255;
+            d[i] = d[i + 1] = d[i + 2] = v;
+          }
+          ctx.putImageData(imgData, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } catch (e) {
+          resolve(dataUrl); // 失敗時は元画像
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
   function cleanupOcr(text) {
-    const lines = text.split('\n').map((l) => l.replace(/[ \t]+/g, ' ').trim());
+    let lines = text.split('\n').map((l) => l.replace(/[ \t]+/g, ' ').trim());
     const out = []; let prevEmpty = false;
     for (const l of lines) {
       const empty = l === '';
       if (empty && prevEmpty) continue;
       out.push(l); prevEmpty = empty;
     }
-    return out.join('\n').trim();
+    let joined = out.join('\n');
+    // 日本語の文字どうしの間に入った余分なスペースを除去（例:「今 日 は」→「今日は」）
+    // 両隣が非ASCII（＝日本語）のときだけスペースを削る。英単語の間隔は残す。
+    for (let i = 0; i < 3; i++) {
+      joined = joined.replace(/([^\x00-\x7F])[\x20\u3000]+([^\x00-\x7F])/g, '$1$2');
+    }
+    return joined.trim();
   }
 
   // ---------------- OCR編集 ----------------
   let editingId = null;
-  function openEdit({ body = '', existing = null }) {
-    editingId = existing ? existing.id : null;
-    $('edit-title').value = existing ? existing.title : '';
-    $('edit-body').value = existing ? existing.body : body;
-    show('edit');
-  }
-  $('btn-split').addEventListener('click', () => {
-    $('edit-body').value = splitSentences($('edit-body').value).join('\n');
-  });
-  function saveText(thenRead) {
-    const body = $('edit-body').value.trim();
-    if (!body) { toast('よむ ぶんしょうを いれてね'); return null; }
-    const title = $('edit-title').value.trim() || 'なまえのない おはなし';
-    let t;
-    if (editingId) {
-      t = texts.find((x) => x.id === editingId);
-      t.title = title; t.body = body; t.updatedAt = new Date().toISOString();
-    } else {
-      t = { id: uid(), title, body, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-      texts.unshift(t);
-    }
+  let autoSaveTimer = null;
+
+  // 読み取り直後の文章を先に作って保存する。削除は deleteText だけが行う。
+  function createText(body) {
+    const now = new Date().toISOString();
+    const t = {
+      id: uid(),
+      title: 'なまえのない おはなし',
+      body,
+      createdAt: now,
+      updatedAt: now,
+    };
+    texts.unshift(t);
     saveTexts();
-    if (thenRead) { startReading(t, false); }
-    else { show('home'); toast('ほぞんしたよ！いつでも よめるよ'); }
     return t;
   }
-  $('btn-save').addEventListener('click', () => saveText(false));
-  $('btn-save-read').addEventListener('click', () => saveText(true));
+
+  function openEdit({ body = '', existing = null }) {
+    const text = existing || createText(body);
+    editingId = text.id;
+    $('edit-title').value = text.title === 'なまえのない おはなし' ? '' : text.title;
+    $('edit-body').value = text.body;
+    show('edit');
+  }
+
+  // 編集した内容も自動保存する。localStorageは同期保存のため、画面を離れても残る。
+  function persistEditingText({ requireBody = false } = {}) {
+    const body = $('edit-body').value.trim();
+    if (requireBody && !body) {
+      toast('よむ ぶんしょうを いれてね');
+      return null;
+    }
+    let t = texts.find((x) => x.id === editingId);
+    if (!t) {
+      t = createText(body);
+      editingId = t.id;
+    }
+    t.title = $('edit-title').value.trim() || 'なまえのない おはなし';
+    t.body = body;
+    t.updatedAt = new Date().toISOString();
+    saveTexts();
+    return t;
+  }
+
+  function scheduleAutoSave() {
+    if (!editingId) return;
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => persistEditingText(), 300);
+  }
+
+  function flushEditingText({ requireBody = false } = {}) {
+    clearTimeout(autoSaveTimer);
+    return editingId ? persistEditingText({ requireBody }) : null;
+  }
+
+  $('edit-title').addEventListener('input', scheduleAutoSave);
+  $('edit-body').addEventListener('input', scheduleAutoSave);
+  $('btn-split').addEventListener('click', () => {
+    $('edit-body').value = splitSentences($('edit-body').value).join('\n');
+    scheduleAutoSave();
+  });
+  // ＋ページ：カメラ/ファイルから もう1枚 読み取って、いまの本文に継ぎ足す
+  $('btn-add-page').addEventListener('click', () => {
+    flushEditingText();
+    ocrAppend = true;       // 次のOCR結果は追記
+    resetScan();
+    show('scan');
+  });
+  function finishEdit(thenRead) {
+    const t = flushEditingText({ requireBody: true });
+    if (!t) return null;
+    if (thenRead) { startReading(t, false); }
+    else { show('home'); toast('じどうで ほぞんしたよ！いつでも よめるよ'); }
+    return t;
+  }
+  $('btn-save').addEventListener('click', () => finishEdit(false));
+  $('btn-save-read').addEventListener('click', () => finishEdit(true));
 
   // ---------------- 文章えらび ----------------
   function openList(singleLine) {
@@ -293,22 +894,41 @@
     texts.forEach((t) => {
       const div = document.createElement('div');
       div.className = 'list-card';
-      div.innerHTML = `<div style="font-size:30px">📖</div>
-        <div style="flex:1;min-width:0"><div class="ttl">${esc(t.title)}</div>
+      div.innerHTML = `<div style="flex:1;min-width:0"><div class="ttl">${esc(t.title)}</div>
         <div class="prev">${esc(t.body.replace(/\n/g, ' '))}</div></div>
-        <div style="font-size:32px">▶️</div>`;
+        <button class="del-btn" title="さくじょ">${icon('trash')}</button>
+        <div class="go-read">${icon('play')}<span>よむ</span></div>`;
       div.addEventListener('click', () => startReading(t, singleLine));
+      // 削除ボタン（カードのタップとは分離）
+      div.querySelector('.del-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`「${t.title}」を さくじょしますか？`)) {
+          deleteText(t.id);
+          openList(singleLine); // 再描画
+        }
+      });
       wrap.appendChild(div);
     });
     show('list');
+  }
+  function deleteText(id) {
+    texts = texts.filter((t) => t.id !== id);
+    saveTexts();
   }
   const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // ---------------- 音読 + 録音 ----------------
   let currentText = null, singleLineMode = false, lineIndex = 0;
-  let mediaRecorder = null, mediaStream = null, audioCtx = null, analyser = null;
-  let chunks = [], recStart = 0, timerInt = null, volRaf = null, currentSession = null;
+  let mediaStream = null, audioCtx = null, analyser = null;
+  let recStart = 0, timerInt = null, volRaf = null, currentSession = null;
   let volSamples = [];
+  // 読み上げハイライト用
+  let highlightSpans = [];   // {el, matchable, ch}
+  let matchableTarget = [];  // 照合用：正規化した文字（句読点・空白を除く）＝フォールバック
+  let readKana = [];         // 読み(ひらがな)ベースの照合：{kana, spanEnd}
+  let readingMode = false;   // 読みベースで照合できるか
+  let tokenizer = null;      // kuromoji形態素解析器（読み付与）。読めたら有効。
+  let recognition = null, recognizing = false, finalTranscript = '';
 
   // 音量バーの12本を生成
   const volbar = $('volbar');
@@ -317,7 +937,7 @@
   function startReading(text, single) {
     currentText = text; singleLineMode = single; lineIndex = 0;
     $('read-title').textContent = text.title;
-    $('read-pet').textContent = stageOf(pet.stage).emoji;
+    $('read-pet').innerHTML = petArt(pet);
     $('read-pet').className = 'pet small';
     $('read-cheer').hidden = true;
     $('vol-area').hidden = true;
@@ -328,103 +948,348 @@
   function renderReadText() {
     const lines = linesOf(currentText.body);
     const nav = $('line-nav');
+    let displayText;
     if (singleLineMode && lines.length > 1) {
       nav.hidden = false;
       lineIndex = Math.max(0, Math.min(lineIndex, lines.length - 1));
       $('line-indicator').textContent = `${lineIndex + 1} / ${lines.length} 行`;
-      $('read-text').textContent = lines[lineIndex] || '';
+      displayText = lines[lineIndex] || '';
     } else {
       nav.hidden = true;
-      $('read-text').textContent = lines.join('\n');
+      displayText = lines.join('\n');
+    }
+    // 1文字ずつ <span> に分割（読み上げに合わせて色をつけるため）
+    const el = $('read-text');
+    el.innerHTML = '';
+    highlightSpans = []; matchableTarget = [];
+    for (const ch of displayText) {
+      if (ch === '\n') { el.appendChild(document.createElement('br')); continue; }
+      const span = document.createElement('span');
+      span.textContent = ch;
+      el.appendChild(span);
+      const matchable = isMatchable(ch);
+      highlightSpans.push({ el: span, matchable, ch });
+      if (matchable) matchableTarget.push(normCh(ch));
+    }
+    // 読み(ひらがな)ベースの照合インデックスを用意（kuromojiが使えるとき）
+    readingMode = buildReadingIndex();
+  }
+
+  // カタカナ→ひらがな
+  function kataToHira(s) {
+    let out = '';
+    for (const ch of s) {
+      const c = ch.charCodeAt(0);
+      out += (c >= 0x30a1 && c <= 0x30f6) ? String.fromCharCode(c - 0x60) : ch;
+    }
+    return out;
+  }
+  // テキスト→読み(ひらがな)。kuromojiが無ければ null。
+  function toReadingHira(text) {
+    if (!tokenizer) return null;
+    let tokens;
+    try { tokens = tokenizer.tokenize(text); } catch (_) { return null; }
+    let out = '';
+    for (const tk of tokens) {
+      const r = (tk.reading && tk.reading !== '*') ? tk.reading : tk.surface_form;
+      out += kataToHira(r);
+    }
+    return out;
+  }
+  // 表示中の文章を「読みのかな配列＋各かなが属するspan終端」に変換
+  function buildReadingIndex() {
+    readKana = [];
+    if (!tokenizer || !highlightSpans.length) return false;
+    const spanText = highlightSpans.map((s) => s.ch).join('');
+    let tokens;
+    try { tokens = tokenizer.tokenize(spanText); } catch (_) { return false; }
+    let pos = 0; // spanText上の位置＝highlightSpansのindex
+    for (const tk of tokens) {
+      const surf = tk.surface_form;
+      const end = Math.min(pos + surf.length - 1, highlightSpans.length - 1);
+      const r = (tk.reading && tk.reading !== '*') ? kataToHira(tk.reading) : surf;
+      for (const ch of r) {
+        if (isMatchable(ch)) readKana.push({ kana: normCh(ch), spanEnd: end });
+      }
+      pos += surf.length;
+    }
+    return readKana.length > 0;
+  }
+
+  // 照合対象の文字か。読まなくてよい記号類は除外し、その箇所は自動で進む。
+  // 例: ○ ◯ ⚪︎ ● ■ □ ◆ ★ ☆ ① ② 〇 ※ → 【】《》()！？ 句読点・空白・伸ばし棒・促音 など
+  // （ひらがな/カタカナ/漢字/数字は対象として残す）
+  const MATCH_SKIP = '・ー々ゝゞヽヾっッ※→←↑↓〆〇';
+  function isMatchable(ch) {
+    if (/\s/.test(ch)) return false;
+    const c = ch.codePointAt(0);
+    if (c >= 0x2000 && c <= 0x206F) return false; // 一般句読点
+    if (c >= 0x2190 && c <= 0x21FF) return false; // 矢印
+    if (c >= 0x2460 && c <= 0x24FF) return false; // 丸数字 ①②
+    if (c >= 0x2500 && c <= 0x27BF) return false; // 罫線/幾何図形/記号
+    if (c >= 0x2B00 && c <= 0x2BFF) return false; // 補助記号
+    if (c >= 0x3000 && c <= 0x303F) return false; // CJK記号と句読点
+    if (c >= 0xFE00 && c <= 0xFE0F) return false; // 異体字セレクタ
+    if (c >= 0xFF01 && c <= 0xFF0F) return false; // 全角記号
+    if (c >= 0xFF1A && c <= 0xFF20) return false;
+    if (c >= 0xFF3B && c <= 0xFF40) return false;
+    if (c >= 0xFF5B && c <= 0xFF65) return false;
+    if (MATCH_SKIP.indexOf(ch) >= 0) return false;
+    return true;
+  }
+  // 正規化：カタカナ→ひらがな、小さい仮名→大きい仮名、英字は小文字に
+  const SMALL_KANA = { 'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゃ':'や','ゅ':'ゆ','ょ':'よ','ゎ':'わ','ゕ':'か','ゖ':'け' };
+  function normCh(ch) {
+    const code = ch.charCodeAt(0);
+    if (code >= 0x30a1 && code <= 0x30f6) ch = String.fromCharCode(code - 0x60); // カナ→かな
+    if (SMALL_KANA[ch]) ch = SMALL_KANA[ch];
+    return ch.toLowerCase();
+  }
+
+  // 前方ウィンドウ照合：targetKana(配列) に対して読めた数を返す
+  function forwardMatch(spoken, targetKana) {
+    const N = targetKana.length;
+    const W = 6; // 漢字の読みや言い直し・誤認識を乗り越える窓
+    let i = 0;
+    for (let j = 0; j < spoken.length && i < N; j++) {
+      const c = spoken[j];
+      let found = -1;
+      for (let k = 0; k < W && i + k < N; k++) {
+        if (targetKana[i + k] === c) { found = k; break; }
+      }
+      if (found >= 0) i += found + 1;
+    }
+    return i;
+  }
+
+  // 認識テキストを文章と前方照合。読み(ひらがな)どうしで比べるので漢字でもOK。
+  function updateHighlightFromTranscript(transcript) {
+    if (readingMode && readKana.length) {
+      // 読みベース：認識結果を読み(ひらがな)化してから照合
+      const hira = toReadingHira(transcript) || transcript;
+      const spoken = [];
+      for (const ch of hira) { if (isMatchable(ch)) spoken.push(normCh(ch)); }
+      const matched = forwardMatch(spoken, readKana.map((x) => x.kana));
+      highlightByReading(matched);
+    } else if (matchableTarget.length) {
+      // フォールバック：文字どうしで照合
+      const t = [];
+      for (const ch of transcript) { if (isMatchable(ch)) t.push(normCh(ch)); }
+      highlightByCount(forwardMatch(t, matchableTarget));
+    }
+    showHeard(transcript);
+  }
+
+  // 認識の状況を画面に見せる（聞こえた言葉を“ひらがな部分だけ”で表示。漢字は出さない）
+  let lastHeardAt = 0;
+  function showHeard(transcript) {
+    lastHeardAt = Date.now();
+    // 漢字は出さない：ひらがな・カタカナだけ取り出して表示（読み間違いの混乱を防ぐ）
+    const kana = (transcript.match(/[ぁ-んァ-ヶー]/g) || []).join('');
+    const tail = kana.slice(-14);
+    $('vol-text').textContent = tail ? `きこえた：${tail}` : 'きこえてるよ！';
+    $('vol-text').classList.remove('vol-quiet');
+  }
+
+  // 読みベース：matched 個ぶんの読みかなに対応する span まで色づけ
+  function highlightByReading(matched) {
+    matched = Math.max(0, Math.min(matched, readKana.length));
+    const until = matched > 0 ? readKana[matched - 1].spanEnd : -1;
+    for (let k = 0; k < highlightSpans.length; k++) {
+      highlightSpans[k].el.classList.toggle('read-hl', k <= until);
+    }
+    applyProgress(readKana.length ? matched / readKana.length : 0);
+  }
+
+  // 文字ベース（フォールバック）：matched 文字ぶん色づけ
+  function highlightByCount(matched) {
+    if (!highlightSpans.length) return;
+    matched = Math.max(0, Math.min(matched, matchableTarget.length));
+    let mcount = 0, until = -1;
+    for (let k = 0; k < highlightSpans.length; k++) {
+      if (highlightSpans[k].matchable) {
+        if (mcount < matched) { until = k; mcount++; } else break;
+      } else if (mcount > 0 && mcount < matched) {
+        until = k;
+      }
+    }
+    for (let k = 0; k < highlightSpans.length; k++) {
+      highlightSpans[k].el.classList.toggle('read-hl', k <= until);
+    }
+    applyProgress(matchableTarget.length ? matched / matchableTarget.length : 0);
+  }
+
+  // 進捗に応じた応援メッセージ＆ペットの成長演出（両方式で共通）
+  function applyProgress(progress) {
+    if (progress >= 0.98) $('read-cheer').textContent = 'ぜんぶ よめたね！すごい！';
+    else if (progress > 0.05) $('read-cheer').textContent = 'いいちょうし！よめてるよ';
+    const rp = $('read-pet');
+    if (rp) {
+      rp.style.setProperty('--grow', (1 + progress * 0.35).toFixed(3));
+      rp.classList.toggle('glow', progress >= 0.6);
     }
   }
   $('line-prev').addEventListener('click', () => { lineIndex--; renderReadText(); });
   $('line-next').addEventListener('click', () => { lineIndex++; renderReadText(); });
 
   $('btn-rec-start').addEventListener('click', startRecording);
+  // iOSでのタップ取りこぼし対策に click と touchend の両方を購読（多重実行はガード済み）
   $('btn-finish').addEventListener('click', finishReading);
+  $('btn-finish').addEventListener('touchend', (e) => { e.preventDefault(); finishReading(); });
 
-  async function startRecording() {
+  let reading = false;
+
+  // 音声認識（読んだ言葉を文字化して、文章と照合・色づけ）
+  let heardWatch = null;
+  function startRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return false;
+    try {
+      recognition = new SR();
+      recognition.lang = 'ja-JP';
+      recognition.continuous = true;
+      recognition.interimResults = true; // 中間結果で即ハイライト（反応を速く）
+      recognition.maxAlternatives = 1;
+      finalTranscript = '';
+      recognition.onresult = (e) => {
+        let interim = '';
+        for (let k = e.resultIndex; k < e.results.length; k++) {
+          const r = e.results[k];
+          if (r.isFinal) finalTranscript += r[0].transcript;
+          else interim += r[0].transcript;
+        }
+        updateHighlightFromTranscript(finalTranscript + interim);
+      };
+      recognition.onerror = (e) => {
+        if (e && (e.error === 'not-allowed' || e.error === 'service-not-allowed')) {
+          toast('マイクを ゆるしてね（せっていで きょかしてね）');
+        }
+        // no-speech / aborted などは onend で自動再開
+      };
+      recognition.onend = () => { if (recognizing) { try { recognition.start(); } catch (_) {} } };
+      recognition.start();
+      recognizing = true;
+      lastHeardAt = Date.now();
+      // 「聞こえているか」を見張る：しばらく認識が無ければ案内を出す
+      heardWatch = setInterval(() => {
+        if (!recognizing) return;
+        if (Date.now() - lastHeardAt > 2600) {
+          $('vol-text').textContent = 'きこえないよ？ もっと ちかづいて はっきり いってね';
+          $('vol-text').classList.add('vol-quiet');
+        }
+      }, 700);
+      return true;
+    } catch (_) { recognition = null; return false; }
+  }
+  function stopRecognition() {
+    recognizing = false;
+    if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
+    if (heardWatch) { clearInterval(heardWatch); heardWatch = null; }
+  }
+
+  // 音声認識が使えない端末向けフォールバック：声の「区切り」でハイライトを進める
+  async function startVoiceFallback() {
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (e) {
-      toast('マイクを つかえるように してね'); return;
-    }
-    currentSession = { id: uid(), textId: currentText.id, startedAt: new Date().toISOString() };
-    chunks = []; volSamples = [];
-    mediaRecorder = new MediaRecorder(mediaStream);
-    mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-    mediaRecorder.start();
-    recStart = Date.now();
-
-    // 音量メーター
+    } catch (e) { toast('マイクを つかえるように してね'); return false; }
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') { try { await audioCtx.resume(); } catch (_) {} }
     const src = audioCtx.createMediaStreamSource(mediaStream);
     analyser = audioCtx.createAnalyser(); analyser.fftSize = 512;
     src.connect(analyser);
     const buf = new Uint8Array(analyser.fftSize);
-    const bars = volbar.querySelectorAll('i');
+    let onsets = 0, wasAbove = false, belowSince = performance.now();
+    const VOICE_THRESHOLD = 0.12, GAP_MS = 80, CHARS_PER_ONSET = 1.6;
     const loop = () => {
       analyser.getByteTimeDomainData(buf);
       let sum = 0; for (let i = 0; i < buf.length; i++) { const x = (buf[i] - 128) / 128; sum += x * x; }
       const level = Math.min(1, Math.sqrt(sum / buf.length) * 3.2);
-      volSamples.push(level);
-      const active = Math.round(level * bars.length);
-      bars.forEach((b, i) => {
-        b.style.background = i < active
-          ? `linear-gradient(${getComputedStyle(document.documentElement).getPropertyValue('--secondary')}, var(--primary))`
-          : 'rgba(0,0,0,.08)';
-      });
-      $('vol-text').textContent = level > 0.15 ? 'いい声が きこえてるよ！' : 'こえを きかせてね';
+      const now = performance.now();
+      const above = level > VOICE_THRESHOLD;
+      if (above && !wasAbove && (now - belowSince) > GAP_MS) onsets++;
+      if (!above && wasAbove) belowSince = now;
+      wasAbove = above;
+      highlightByCount(Math.round(onsets * CHARS_PER_ONSET));
       volRaf = requestAnimationFrame(loop);
     };
     loop();
+    return true;
+  }
+
+  async function startRecording() {
+    finishing = false;
+    currentSession = { id: uid(), textId: currentText.id, startedAt: new Date().toISOString() };
+    volSamples = [];
+    renderReadText();
+    recStart = Date.now();
+
+    // まず音声認識を試す。使えない端末は声の区切り方式にフォールバック。
+    let mode = 'speech';
+    if (!startRecognition()) {
+      const ok = await startVoiceFallback();
+      if (!ok) return; // マイク不可
+      mode = 'voice';
+    }
+
+    $('read-cheer').textContent = mode === 'speech'
+      ? 'こえを きかせてね！よんだ ところに いろが つくよ'
+      : 'こえを だすと 文字に いろが ついていくよ！';
+    $('vol-text').textContent = 'きいているよ…';
 
     timerInt = setInterval(() => {
       $('read-timer').textContent = fmtTime(Math.floor((Date.now() - recStart) / 1000));
     }, 500);
 
+    reading = true;
     $('btn-rec-start').hidden = true;
     $('vol-area').hidden = false;
+    $('volbar').hidden = true; // 録音なしのため音量バーは非表示（聞いている表示のみ）
     $('read-cheer').hidden = false;
     $('read-pet').className = 'pet small reading';
+    $('read-pet').style.setProperty('--grow', '1'); // 育ち具合をリセット
+    $('read-pet').classList.remove('glow');
     $('read-timer').textContent = '00:00';
   }
 
   function stopMedia() {
+    stopRecognition();
     if (timerInt) clearInterval(timerInt);
     if (volRaf) cancelAnimationFrame(volRaf);
     if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
     if (mediaStream) { mediaStream.getTracks().forEach((t) => t.stop()); mediaStream = null; }
   }
 
-  async function finishReading() {
-    if (!mediaRecorder) return;
+  let finishing = false;
+  function finishReading() {
+    // 開始していない／すでに終了処理中なら何もしない（多重実行ガード）
+    if (finishing || !currentSession) return;
+    finishing = true;
+    reading = false;
+
     const durationSec = Math.max(0, Math.floor((Date.now() - recStart) / 1000));
-    const avg = volSamples.length ? volSamples.reduce((a, b) => a + b, 0) / volSamples.length : 0;
-    const max = volSamples.length ? Math.max(...volSamples) : 0;
+    let matched = 0;
+    for (const s of highlightSpans) { if (s.matchable && s.el.classList.contains('read-hl')) matched++; }
+    const progress = matchableTarget.length ? matched / matchableTarget.length : 0;
 
-    const stopped = new Promise((res) => { mediaRecorder.onstop = res; });
-    mediaRecorder.stop();
-    await stopped;
-    stopMedia();
+    // マイク・認識を止める（ここで例外が出ても結果表示は必ず行う）
+    try { stopMedia(); } catch (_) {}
 
-    const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/mp4' });
-    try { await AudioDB.put(currentSession.id, blob); } catch (e) { /* 保存失敗は無視 */ }
-
-    const session = {
-      ...currentSession, endedAt: new Date().toISOString(), durationSec,
-      averageVolume: avg, maxVolume: max, hasAudio: blob.size > 0,
-      parentApproved: false, earnedExp: 0,
-    };
-    const result = applySession(session, currentText);
-    mediaRecorder = null;
-    showResult(result, durationSec);
+    try {
+      const session = {
+        ...currentSession, endedAt: new Date().toISOString(), durationSec,
+        averageVolume: progress, maxVolume: progress, hasAudio: false,
+        parentApproved: false, earnedExp: 0,
+      };
+      const result = applySession(session, currentText);
+      showResult(result, durationSec);
+    } catch (e) {
+      show('home'); // 万一失敗してもホームに戻して操作不能を防ぐ
+    }
   }
 
   // ---------------- 結果 ----------------
   function showResult(r, durationSec) {
-    $('result-pet').textContent = stageOf(pet.stage).emoji;
+    $('result-pet').innerHTML = petArt(pet);
     $('result-pet').className = 'pet happy';
     $('result-msg').textContent = r.message;
     $('result-time').textContent = fmtTime(durationSec);
@@ -432,29 +1297,198 @@
     $('result-food').textContent = '+' + r.earnedFood;
     const banners = $('result-banners'); banners.innerHTML = '';
     const addBanner = (text, cls) => { const d = document.createElement('div'); d.className = 'banner ' + (cls || ''); d.textContent = text; banners.appendChild(d); };
-    if (r.leveledUp) addBanner('🎊 レベルアップ！ 🎊');
-    if (r.evolved && r.newStage) addBanner(`✨ ${stageOf(r.newStage).label} に しんか！ ✨`);
-    if (r.gotTreasure) addBanner('🎁 たからばこが ひらいたよ！', 'treasure');
-    if (r.gotItem) addBanner('🎁 5日れんぞく！しんかアイテム ゲット！');
+    if (r.leveledUp) addBanner('レベルアップ！');
+    if (r.evolved && r.newStage) addBanner(`${stageObj(pet).label} に しんか！`);
+    if (r.gotTreasure) addBanner('たからばこが ひらいたよ！', 'treasure');
+    if (r.gotItem) addBanner('5日れんぞく！しんかアイテム ゲット！');
     $('result-streak').textContent = `れんぞく ${r.newStreak}日め！`;
     show('result');
   }
   $('btn-result-home').addEventListener('click', () => show('home'));
 
-  // ---------------- 親ゲート ----------------
-  let gateA = 0, gateB = 0;
-  function openGate() {
-    gateA = 3 + Math.floor(Math.random() * 7);
-    gateB = 4 + Math.floor(Math.random() * 6);
-    $('gate-q').textContent = `${gateA} × ${gateB} = ?`;
-    $('gate-input').value = '';
-    $('gate-error').hidden = true;
-    show('gate');
+  // ---------------- せってい（Gemini API） ----------------
+  function openSettings() {
+    const c = geminiCfg();
+    $('set-key').value = config.geminiKey || '';
+    $('set-model').value = config.geminiModel || GEMINI_DEFAULT.model;
+    $('set-model-lite').value = config.geminiModelLite || GEMINI_DEFAULT.modelLite;
+    $('set-endpoint').value = config.geminiEndpoint || GEMINI_DEFAULT.endpoint;
+    $('set-status').textContent = c.key ? 'AI読み取り：オン' : 'AI読み取り：オフ（キー未設定）';
+    show('settings');
   }
-  $('btn-gate-go').addEventListener('click', () => {
-    if (parseInt($('gate-input').value, 10) === gateA * gateB) openParent();
-    else $('gate-error').hidden = false;
+  const btnSetSave = $('btn-set-save');
+  if (btnSetSave) btnSetSave.addEventListener('click', () => {
+    config.geminiKey = $('set-key').value.trim();
+    config.geminiModel = $('set-model').value.trim() || GEMINI_DEFAULT.model;
+    config.geminiModelLite = $('set-model-lite').value.trim() || GEMINI_DEFAULT.modelLite;
+    config.geminiEndpoint = $('set-endpoint').value.trim() || GEMINI_DEFAULT.endpoint;
+    saveConfig();
+    toast('せっていを ほぞんしたよ');
+    openSettings();
   });
+  const btnSetReset = $('btn-set-reset');
+  if (btnSetReset) btnSetReset.addEventListener('click', () => {
+    $('set-model').value = GEMINI_DEFAULT.model;
+    $('set-model-lite').value = GEMINI_DEFAULT.modelLite;
+    $('set-endpoint').value = GEMINI_DEFAULT.endpoint;
+  });
+  // APIキーを コピー
+  const btnKeyCopy = $('btn-key-copy');
+  if (btnKeyCopy) btnKeyCopy.addEventListener('click', async () => {
+    const k = ($('set-key').value || config.geminiKey || '').trim();
+    if (!k) { toast('コピーする キーが ないよ'); return; }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(k);
+      else { const t = $('set-key'); t.focus(); t.select(); document.execCommand('copy'); }
+      toast('キーを コピーしたよ');
+    } catch (_) { toast('コピーできませんでした'); }
+  });
+  // APIキーを 削除
+  const btnKeyClear = $('btn-key-clear');
+  if (btnKeyClear) btnKeyClear.addEventListener('click', () => {
+    if (!($('set-key').value || config.geminiKey)) { toast('キーは もう ないよ'); return; }
+    if (!confirm('APIキーを けしますか？（AI読み取りは オフに なります）')) return;
+    config.geminiKey = '';
+    $('set-key').value = '';
+    saveConfig();
+    openSettings();
+    toast('キーを けしたよ');
+  });
+
+  // QRコード共有：オーナーがQR表示 → 家族がカメラで読むとキーが入る
+  function ensureQrLib() {
+    if (window.qrcode) return Promise.resolve();
+    return loadScript('https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js');
+  }
+  function keyShareUrl(key) {
+    return location.origin + location.pathname + '#k=' + encodeURIComponent(key);
+  }
+  const btnQrShare = $('btn-qr-share');
+  if (btnQrShare) btnQrShare.addEventListener('click', async () => {
+    const key = (config.geminiKey || $('set-key').value || '').trim();
+    if (!key) { toast('さきに APIキーを ほぞんしてね'); return; }
+    try {
+      await ensureQrLib();
+      const qr = window.qrcode(0, 'M');
+      qr.addData(keyShareUrl(key));
+      qr.make();
+      $('qr-box').innerHTML = qr.createImgTag(6, 8);
+      $('qr-modal').hidden = false;
+    } catch (_) { toast('QRを つくれませんでした'); }
+  });
+  const btnQrClose = $('btn-qr-close');
+  if (btnQrClose) btnQrClose.addEventListener('click', () => { $('qr-modal').hidden = true; });
+
+  // アプリ内でQRをカメラ読み取り（ホーム画面アプリでも確実にキーを取り込める）
+  function ensureJsQR() {
+    if (window.jsQR) return Promise.resolve();
+    return loadScript('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js');
+  }
+  let qrStream = null, qrRAF = null;
+  async function startQrScan() {
+    try { await ensureJsQR(); } catch (_) { toast('じゅんびに しっぱい'); return; }
+    try { qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); }
+    catch (e) { toast('カメラを つかえないよ（きょかを かくにん）'); return; }
+    const v = $('qrscan-video');
+    v.srcObject = qrStream;
+    try { await v.play(); } catch (_) {}
+    $('qrscan-modal').hidden = false;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const tick = () => {
+      if (!qrStream) return;
+      if (v.readyState >= 2 && v.videoWidth) {
+        canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+        let code = null;
+        try { const d = ctx.getImageData(0, 0, canvas.width, canvas.height); code = window.jsQR(d.data, d.width, d.height); } catch (_) {}
+        if (code && code.data) { handleScannedQr(code.data); return; }
+      }
+      qrRAF = requestAnimationFrame(tick);
+    };
+    qrRAF = requestAnimationFrame(tick);
+  }
+  function stopQrScan() {
+    if (qrRAF) cancelAnimationFrame(qrRAF); qrRAF = null;
+    if (qrStream) { qrStream.getTracks().forEach((t) => t.stop()); qrStream = null; }
+    const v = $('qrscan-video'); if (v) v.srcObject = null;
+    $('qrscan-modal').hidden = true;
+  }
+  function handleScannedQr(data) {
+    let key = '';
+    const m = (data || '').match(/[#&?]k=([^&]+)/);
+    if (m) { try { key = decodeURIComponent(m[1]); } catch (_) { key = m[1]; } }
+    else if (/^[A-Za-z0-9_\-]{20,}$/.test((data || '').trim())) key = data.trim();
+    stopQrScan();
+    if (key) { config.geminiKey = key; saveConfig(); openSettings(); toast('APIキーを よみとったよ！'); }
+    else toast('このQRは キーじゃ ないみたい');
+  }
+  const btnQrScan = $('btn-qr-scan');
+  if (btnQrScan) btnQrScan.addEventListener('click', startQrScan);
+  const btnQrScanClose = $('btn-qrscan-close');
+  if (btnQrScanClose) btnQrScanClose.addEventListener('click', stopQrScan);
+
+  // 受け取り側：URLの #k=... があればキーを取り込み、URLからは消す
+  function applyKeyFromHash() {
+    const m = (location.hash || '').match(/[#&]k=([^&]+)/);
+    if (!m) return;
+    try {
+      const key = decodeURIComponent(m[1]);
+      if (key) { config.geminiKey = key; saveConfig(); toast('APIキーを うけとったよ！AIで よめるよ'); }
+    } catch (_) {}
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+  }
+
+  // ---------------- なかま（コレクション） ----------------
+  function openCollection() {
+    const wrap = $('collection-list'); wrap.innerHTML = '';
+    pets.forEach((p) => {
+      p.level = levelForExp(p.exp);
+      const so = stageObj(p); const active = p.id === activeId;
+      const div = document.createElement('div');
+      div.className = 'list-card' + (active ? ' pet-active' : '');
+      div.innerHTML = `<div class="pet-thumb">${petArt(p)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="ttl">${esc(p.name)}</div>
+          <div class="prev">${speciesOf(p).label}・${so.label}・レベル${p.level}</div>
+        </div>
+        ${active ? '<span class="chip">いま いっしょ</span>' : '<span class="go-read">いれかえ</span>'}`;
+      if (!active) div.addEventListener('click', () => setActive(p.id));
+      wrap.appendChild(div);
+    });
+    show('collection');
+  }
+  function setActive(id) {
+    const found = pets.find((p) => p.id === id);
+    if (!found) return;
+    activeId = id; pet = found; saveAll();
+    toast(`${pet.name}と いっしょに そだてるよ！`);
+    openCollection();
+  }
+  function addPet(species) {
+    const names = { dragon: 'たまちゃん', rabbit: 'うさちゃん', owl: 'ふくちゃん' };
+    pets.push({ id: uid(), species, name: names[species] || 'たまちゃん', stage: 'egg', exp: 0, level: 1 });
+    saveAll();
+    $('species-sheet').hidden = true;
+    openCollection();
+    toast('あたらしい たまごが きたよ！');
+  }
+  function openSpeciesPicker() {
+    const wrap = $('species-choices'); wrap.innerHTML = '';
+    Object.keys(SPECIES).forEach((key) => {
+      const sp = SPECIES[key];
+      const b = document.createElement('button');
+      b.className = 'stamp-choice';
+      b.innerHTML = `<img src="${sp.stages[0].img}?v=${ASSET_V}" alt="${sp.label}" style="height:54px;width:auto;display:block;margin:0 auto 4px"><span>${sp.label}</span>`;
+      b.addEventListener('click', () => addPet(key));
+      wrap.appendChild(b);
+    });
+    $('species-sheet').hidden = false;
+  }
+  const btnNewPet = $('btn-new-pet');
+  if (btnNewPet) btnNewPet.addEventListener('click', openSpeciesPicker);
+  const btnSpeciesCancel = $('btn-species-cancel');
+  if (btnSpeciesCancel) btnSpeciesCancel.addEventListener('click', () => { $('species-sheet').hidden = true; });
 
   // ---------------- 親画面 ----------------
   let parentAudioEl = null, playingId = null;
@@ -478,7 +1512,7 @@
         <div class="p-top"><span class="p-ttl">${esc(text ? text.title : '（削除された文章）')}</span>
         <span class="p-date">${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</span></div>
         <div class="p-meta"><span>⏱️ ${fmtTime(s.durationSec)}</span><span>⭐ +${s.earnedExp}</span>
-        <span>🔊 ${Math.round((s.averageVolume || 0) * 100)}%</span>${s.parentApproved ? '<span>💖 ほめた</span>' : ''}</div>
+        <span>📖 よめた ${Math.round((s.averageVolume || 0) * 100)}%</span>${s.parentApproved ? '<span>💖 ほめた</span>' : ''}</div>
         ${text ? `<div class="p-body">${esc(text.body)}</div>` : ''}
         <div class="p-actions">
           <button class="mini-btn play" ${s.hasAudio ? '' : 'disabled'} data-play="${s.id}">${s.hasAudio ? '▶ さいせい' : '録音なし'}</button>
@@ -536,20 +1570,78 @@
     feedbacks.unshift({ id: uid(), sessionId: stampSessionId, stampType: stampSelected,
       comment: $('stamp-comment').value.trim(), createdAt: new Date().toISOString() });
     const s = sessions.find((x) => x.id === stampSessionId); if (s) s.parentApproved = true;
-    pet.friendship += 1;
+    account.friendship += 1;
     saveFeedbacks(); saveSessions(); savePet();
     sheet.hidden = true;
-    toast('スタンプを おくったよ！なかよし度アップ💖');
+    toast('スタンプを おくったよ！なかよし度アップ');
     renderSessions(); renderStamps();
   });
 
   // ---------------- ナビゲーション結線 ----------------
-  $('btn-parent').addEventListener('click', openGate);
+  const btnParent = $('btn-parent'); if (btnParent) btnParent.addEventListener('click', openParent);
   $('btn-scan').addEventListener('click', () => { resetScan(); show('scan'); });
+  // ごはんを あげる：ごはんを消費して経験値に変える
+  const btnFeed = $('btn-feed');
+  if (btnFeed) btnFeed.addEventListener('click', () => {
+    if (account.energy <= 0) { toast('ごはんが ないよ。おんどくで ためよう！'); return; }
+    const feed = Math.min(account.energy, 10);
+    account.energy -= feed;
+    pet.exp += feed;
+    pet.level = levelForExp(pet.exp);
+    const evolved = evolveCheck();
+    savePet();
+    renderHome();
+    const rp = $('home-pet'); if (rp) { rp.classList.add('happy'); setTimeout(() => rp.classList.remove('happy'), 1200); }
+    toast(evolved ? `ごはん +${feed}！${stageObj(pet).label}に しんかしたよ！` : `ごはんを あげた！けいけんち +${feed}`);
+  });
   $('btn-read').addEventListener('click', () => openList(false));
   $('btn-read-line').addEventListener('click', () => openList(true));
-  document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => { stopMedia(); show(b.dataset.back); }));
+  document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => {
+    if (b.closest('#screen-edit')) flushEditingText();
+    stopMedia(); stopQrScan(); show(b.dataset.back);
+  }));
+
+  // アプリを閉じる・別画面へ切り替える直前にも、入力途中の変更を確定する。
+  window.addEventListener('pagehide', () => flushEditingText());
+
+  // 下部ナビ（ゲートなしで直接ひらく）
+  document.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => {
+    const nav = b.dataset.nav;
+    if (nav === 'home') show('home');
+    else if (nav === 'collection') openCollection();
+    else if (nav === 'scan') { resetScan(); show('scan'); }
+    else if (nav === 'settei') openSettings();
+    else openParent(); // きろく → 親画面
+  }));
 
   // 起動
+  applyKeyFromHash(); // QRから受け取ったキーを取り込む
   show('home');
+
+  // バージョン表示＆更新のお知らせ
+  const APP_VERSION = '1.0.43';
+  (function showVersionAndNotifyUpdate() {
+    const el = $('app-version');
+    if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
+    const seen = Store.load('seen_version', null);
+    if (seen && seen !== APP_VERSION) {
+      toast(`あたらしく なったよ！(ver.${APP_VERSION})`);
+    }
+    Store.save('seen_version', APP_VERSION);
+  })();
+
+  // ※ kuromoji（読み付与）は、辞書構築の重い処理で端末が固まる問題があったため
+  //   現在は読み込まない。漢字は「窓つき文字照合（飛び越え）」で対応する（固まらない）。
+  //   将来 Web Worker 化して非ブロッキングで再導入する余地あり。
+
+  // Service Worker を登録（ホーム画面アプリでも更新が届くように）
+  // ※ 自動リロードはしない（リロード地獄を防ぐ）。ネットワーク優先なので
+  //   次に開いた時点で自然に最新になる。更新の有無は ver 表示とトーストで分かる。
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+        .then((reg) => { reg.update(); })
+        .catch(() => {});
+    });
+  }
 })();
