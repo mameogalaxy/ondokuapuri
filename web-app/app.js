@@ -698,10 +698,13 @@
       const cur = $('edit-body').value.trim();
       $('edit-body').value = (cur ? cur + '\n\n' : '') + (text || '');
       ocrAppend = false;
+      flushEditingText();
       $('scan-progress').hidden = true;
       show('edit');
     } else {
-      openEdit({ body: text || '' });
+      // OCRが終わった時点で、編集前でも端末内に保存する。
+      // これにより画面を閉じたりアプリを放置したりしても結果は消えない。
+      openEdit({ existing: createText(text || '') });
     }
   }
 
@@ -802,40 +805,83 @@
 
   // ---------------- OCR編集 ----------------
   let editingId = null;
+  let autoSaveTimer = null;
+
+  // 読み取り直後の文章を先に作って保存する。削除は deleteText だけが行う。
+  function createText(body) {
+    const now = new Date().toISOString();
+    const t = {
+      id: uid(),
+      title: 'なまえのない おはなし',
+      body,
+      createdAt: now,
+      updatedAt: now,
+    };
+    texts.unshift(t);
+    saveTexts();
+    return t;
+  }
+
   function openEdit({ body = '', existing = null }) {
-    editingId = existing ? existing.id : null;
-    $('edit-title').value = existing ? existing.title : '';
-    $('edit-body').value = existing ? existing.body : body;
+    const text = existing || createText(body);
+    editingId = text.id;
+    $('edit-title').value = text.title === 'なまえのない おはなし' ? '' : text.title;
+    $('edit-body').value = text.body;
     show('edit');
   }
+
+  // 編集した内容も自動保存する。localStorageは同期保存のため、画面を離れても残る。
+  function persistEditingText({ requireBody = false } = {}) {
+    const body = $('edit-body').value.trim();
+    if (requireBody && !body) {
+      toast('よむ ぶんしょうを いれてね');
+      return null;
+    }
+    let t = texts.find((x) => x.id === editingId);
+    if (!t) {
+      t = createText(body);
+      editingId = t.id;
+    }
+    t.title = $('edit-title').value.trim() || 'なまえのない おはなし';
+    t.body = body;
+    t.updatedAt = new Date().toISOString();
+    saveTexts();
+    return t;
+  }
+
+  function scheduleAutoSave() {
+    if (!editingId) return;
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => persistEditingText(), 300);
+  }
+
+  function flushEditingText({ requireBody = false } = {}) {
+    clearTimeout(autoSaveTimer);
+    return editingId ? persistEditingText({ requireBody }) : null;
+  }
+
+  $('edit-title').addEventListener('input', scheduleAutoSave);
+  $('edit-body').addEventListener('input', scheduleAutoSave);
   $('btn-split').addEventListener('click', () => {
     $('edit-body').value = splitSentences($('edit-body').value).join('\n');
+    scheduleAutoSave();
   });
   // ＋ページ：カメラ/ファイルから もう1枚 読み取って、いまの本文に継ぎ足す
   $('btn-add-page').addEventListener('click', () => {
+    flushEditingText();
     ocrAppend = true;       // 次のOCR結果は追記
     resetScan();
     show('scan');
   });
-  function saveText(thenRead) {
-    const body = $('edit-body').value.trim();
-    if (!body) { toast('よむ ぶんしょうを いれてね'); return null; }
-    const title = $('edit-title').value.trim() || 'なまえのない おはなし';
-    let t;
-    if (editingId) {
-      t = texts.find((x) => x.id === editingId);
-      t.title = title; t.body = body; t.updatedAt = new Date().toISOString();
-    } else {
-      t = { id: uid(), title, body, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-      texts.unshift(t);
-    }
-    saveTexts();
+  function finishEdit(thenRead) {
+    const t = flushEditingText({ requireBody: true });
+    if (!t) return null;
     if (thenRead) { startReading(t, false); }
-    else { show('home'); toast('ほぞんしたよ！いつでも よめるよ'); }
+    else { show('home'); toast('じどうで ほぞんしたよ！いつでも よめるよ'); }
     return t;
   }
-  $('btn-save').addEventListener('click', () => saveText(false));
-  $('btn-save-read').addEventListener('click', () => saveText(true));
+  $('btn-save').addEventListener('click', () => finishEdit(false));
+  $('btn-save-read').addEventListener('click', () => finishEdit(true));
 
   // ---------------- 文章えらび ----------------
   function openList(singleLine) {
@@ -1550,7 +1596,13 @@
   });
   $('btn-read').addEventListener('click', () => openList(false));
   $('btn-read-line').addEventListener('click', () => openList(true));
-  document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => { stopMedia(); stopQrScan(); show(b.dataset.back); }));
+  document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => {
+    if (b.closest('#screen-edit')) flushEditingText();
+    stopMedia(); stopQrScan(); show(b.dataset.back);
+  }));
+
+  // アプリを閉じる・別画面へ切り替える直前にも、入力途中の変更を確定する。
+  window.addEventListener('pagehide', () => flushEditingText());
 
   // 下部ナビ（ゲートなしで直接ひらく）
   document.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => {
@@ -1567,7 +1619,7 @@
   show('home');
 
   // バージョン表示＆更新のお知らせ
-  const APP_VERSION = '1.0.42';
+  const APP_VERSION = '1.0.43';
   (function showVersionAndNotifyUpdate() {
     const el = $('app-version');
     if (el) el.textContent = `よみたま ver.${APP_VERSION}`;
